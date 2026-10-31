@@ -1,32 +1,73 @@
-from django.shortcuts import render
-
-# Create your views here.
 """
-core/views.py - Auth endpoints and protected invoice retrieval.
+core/views.py - Auth endpoints, protected invoice retrieval,
+and ViewSets for Products, Taxes, Plans, Discounts, Quotes, Subscriptions, Invoices, and Payments.
 """
 
+from decimal import Decimal
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
+from django.db import transaction
+from django.http import HttpResponse
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
-from rest_framework import generics, status
+
+from rest_framework import generics, mixins, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import Invoice, UserRole
-from core.permissions import IsAdmin, IsCustomerOwner
+from core.models import (
+    Invoice,
+    InvoiceLine,
+    InvoiceStatus,
+    Payment,
+    UserRole,
+    TaxRule,
+    Product,
+    ProductVariant,
+    Plan,
+    Discount,
+    QuotationTemplate,
+    QuotationTemplateLine,
+    Subscription,
+    SubscriptionLine,
+    SubscriptionStatus,
+)
+from core.permissions import IsAdmin, IsCustomerOwner, IsStaffOrAdmin
 from core.serializers import (
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     SignupSerializer,
     StaffUserCreateSerializer,
+    CurrentUserSerializer,
+    TaxRuleSerializer,
+    ProductSerializer,
+    ProductVariantSerializer,
+    PlanSerializer,
+    DiscountSerializer,
+    QuotationTemplateSerializer,
+    QuotationTemplateLineSerializer,
+    SubscriptionSerializer,
+    SubscriptionLineSerializer,
+    InvoiceSerializer,
+    InvoiceLineSerializer,
+    PaymentSerializer,
 )
+from core.utils import generate_invoice_pdf, generate_subscription_number
 
 User = get_user_model()
 
+
+# ==========================================
+# 1. AUTHENTICATION VIEWS
+# ==========================================
 
 class SignupView(generics.CreateAPIView):
     """
@@ -46,6 +87,18 @@ class CreateStaffUserView(generics.CreateAPIView):
     permission_classes = [IsAdmin]
 
 
+class CurrentUserView(APIView):
+    """
+    GET /api/auth/me/
+    Returns {id, email, first_name, last_name, role} for the logged-in user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = CurrentUserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class PasswordResetRequestView(APIView):
     """
     POST /api/auth/password-reset/
@@ -60,11 +113,8 @@ class PasswordResetRequestView(APIView):
 
         try:
             user = User.objects.get(email=email, is_active=True)
-            # Token is salted with the user's password hash; changing password invalidates it
             token = default_token_generator.make_token(user)
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            
-            # Frontend React route: /reset-password?uid=...&token=...
             reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uidb64}&token={token}"
 
             send_mail(
@@ -80,7 +130,6 @@ class PasswordResetRequestView(APIView):
                 fail_silently=False,
             )
         except User.DoesNotExist:
-            # Mask user existence to prevent account enumeration attacks
             pass
 
         return Response(
@@ -109,32 +158,494 @@ class PasswordResetConfirmView(APIView):
 class InvoiceDetailView(generics.RetrieveAPIView):
     """
     GET /api/invoices/<id>/
-    Demonstrates multi-tenant isolation.
-    Customers receive a 404 (or 403) if attempting to inspect another customer's invoice.
+    Legacy named route: demonstrates multi-tenant isolation.
+    Customers receive 404/403 if inspecting another customer's invoice.
     """
     permission_classes = [IsAuthenticated, IsCustomerOwner]
+    serializer_class = InvoiceSerializer
 
     def get_queryset(self):
         user = self.request.user
-
-        # Admins and Staff view the complete catalog of invoices
+        qs = Invoice.objects.select_related('customer', 'subscription', 'discount').prefetch_related(
+            'lines__product', 'payments'
+        )
         if user.role in [UserRole.ADMIN, UserRole.STAFF]:
-            return Invoice.objects.all().select_related('customer')
+            return qs.all()
+        return qs.filter(customer=user)
 
-        # Customers are restricted to invoices where they are the designated debtor
-        return Invoice.objects.filter(customer=user).select_related('customer')
 
-    def get_serializer_class(self):
-        # Minimal inline serializer for demonstration
-        from rest_framework import serializers
+# ==========================================
+# 2. CATALOG VIEWSETS (ADMIN-WRITE, STAFF-READ)
+# ==========================================
 
-        class InvoiceDetailSerializer(serializers.ModelSerializer):
-            class Meta:
-                model = Invoice
-                fields = (
-                    'id', 'invoice_number', 'status', 'issue_date',
-                    'due_date', 'subtotal', 'tax_amount', 'discount_amount',
-                    'total_amount'
+class TaxRuleViewSet(viewsets.ModelViewSet):
+    """
+    Tax rules: admin-only write, staff read.
+    """
+    queryset = TaxRule.objects.all().order_by('name')
+    serializer_class = TaxRuleSerializer
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [IsStaffOrAdmin()]
+        return [IsAdmin()]
+
+
+class ProductViewSet(viewsets.ModelViewSet):
+    """
+    Products with variants: admin-only write, staff read.
+    """
+    queryset = Product.objects.all().prefetch_related('variants').order_by('id')
+    serializer_class = ProductSerializer
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [IsStaffOrAdmin()]
+        return [IsAdmin()]
+
+
+class ProductVariantViewSet(viewsets.ModelViewSet):
+    """
+    Product variants: admin-only write, staff read.
+    """
+    queryset = ProductVariant.objects.all().select_related('product').order_by('id')
+    serializer_class = ProductVariantSerializer
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [IsStaffOrAdmin()]
+        return [IsAdmin()]
+
+
+class PlanViewSet(viewsets.ModelViewSet):
+    """
+    Plans: admin-only write, staff read.
+    """
+    queryset = Plan.objects.all().order_by('id')
+    serializer_class = PlanSerializer
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [IsStaffOrAdmin()]
+        return [IsAdmin()]
+
+
+class DiscountViewSet(viewsets.ModelViewSet):
+    """
+    Discounts: admin-only for create/update/delete, staff read.
+    """
+    queryset = Discount.objects.all().prefetch_related('products').order_by('id')
+    serializer_class = DiscountSerializer
+
+    def get_permissions(self):
+        if self.request.method in permissions.SAFE_METHODS:
+            return [IsStaffOrAdmin()]
+        return [IsAdmin()]
+
+
+# ==========================================
+# 3. QUOTATION TEMPLATE VIEWSETS (STAFF & ADMIN)
+# ==========================================
+
+class QuotationTemplateViewSet(viewsets.ModelViewSet):
+    """
+    Quotation templates with lines: Staff and admin can create and manage them.
+    """
+    queryset = QuotationTemplate.objects.all().select_related('plan').prefetch_related('lines__product', 'lines__variant').order_by('id')
+    serializer_class = QuotationTemplateSerializer
+    permission_classes = [IsStaffOrAdmin]
+
+    @action(detail=True, methods=['post'], url_path='create-subscription', permission_classes=[IsStaffOrAdmin])
+    def create_subscription(self, request, pk=None):
+        template = self.get_object()
+        customer_id = request.data.get('customer') or request.data.get('customer_id')
+
+        if not customer_id:
+            return Response({"customer": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            customer = User.objects.get(pk=customer_id, role=UserRole.CUSTOMER)
+        except User.DoesNotExist:
+            return Response({"customer": ["Customer not found or user is not a customer."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        start_date_val = request.data.get('start_date')
+        if start_date_val:
+            if isinstance(start_date_val, str):
+                start_date = parse_date(start_date_val)
+                if not start_date:
+                    return Response({"start_date": ["Invalid date format. Use YYYY-MM-DD."]}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                start_date = start_date_val
+        else:
+            start_date = timezone.localdate()
+
+        discount = None
+        discount_id = request.data.get('discount') or request.data.get('discount_id')
+        if discount_id:
+            try:
+                discount = Discount.objects.get(pk=discount_id)
+            except Discount.DoesNotExist:
+                return Response({"discount": ["Discount not found."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment_terms_days = request.data.get('payment_terms_days', 30)
+        try:
+            payment_terms_days = int(payment_terms_days)
+        except (TypeError, ValueError):
+            payment_terms_days = 30
+
+        expiry_date = start_date + timezone.timedelta(days=template.validity_days)
+
+        with transaction.atomic():
+            subscription = Subscription.objects.create(
+                subscription_number=generate_subscription_number(start_date),
+                customer=customer,
+                plan=template.plan,
+                discount=discount,
+                status=SubscriptionStatus.DRAFT,
+                start_date=start_date,
+                expiry_date=expiry_date,
+                payment_terms_days=payment_terms_days,
+            )
+
+            lines_to_create = []
+            for t_line in template.lines.all():
+                price_extra = t_line.variant.price_extra if t_line.variant else Decimal('0.00')
+                unit_price = t_line.product.sales_price + price_extra
+                lines_to_create.append(
+                    SubscriptionLine(
+                        subscription=subscription,
+                        product=t_line.product,
+                        variant=t_line.variant,
+                        quantity=t_line.quantity,
+                        unit_price=unit_price
+                    )
                 )
+            if lines_to_create:
+                SubscriptionLine.objects.bulk_create(lines_to_create)
 
-        return InvoiceDetailSerializer
+        return Response(SubscriptionSerializer(subscription).data, status=status.HTTP_201_CREATED)
+
+
+class QuotationTemplateLineViewSet(viewsets.ModelViewSet):
+    """
+    Quotation template lines: Staff and admin can manage them.
+    """
+    queryset = QuotationTemplateLine.objects.all().select_related('template', 'product', 'variant').order_by('id')
+    serializer_class = QuotationTemplateLineSerializer
+    permission_classes = [IsStaffOrAdmin]
+
+
+# ==========================================
+# 4. SUBSCRIPTION VIEWSETS
+# ==========================================
+
+class SubscriptionViewSet(viewsets.ModelViewSet):
+    """
+    Subscriptions with lines.
+    Staff and admin create and edit. Customers can only list and view their own.
+    Auto-generates subscription_number like SUB-2026-0001.
+    Unit price = product.sales_price + variant.price_extra.
+    Actions:
+    - /transition/: transitions status with validation; 400 on invalid jump;
+      when moving to ACTIVE, next_billing_date = start_date.
+    - /create-from-template/: generates subscription and lines from QuotationTemplate.
+    """
+    serializer_class = SubscriptionSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Subscription.objects.none()
+
+        qs = Subscription.objects.select_related(
+            'customer', 'plan', 'discount'
+        ).prefetch_related(
+            'lines__product', 'lines__variant', 'lines__tax_rule'
+        ).order_by('-created_at')
+
+        if user.role in [UserRole.ADMIN, UserRole.STAFF]:
+            return qs.all()
+        # Customers can only list and view their own
+        return qs.filter(customer=user)
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsCustomerOwner()]
+        return [IsStaffOrAdmin()]
+
+    @action(detail=True, methods=['post'], url_path='transition', permission_classes=[IsStaffOrAdmin])
+    def transition(self, request, pk=None):
+        subscription = self.get_object()
+        target_status = request.data.get('status') or request.data.get('new_status')
+
+        if not target_status:
+            return Response(
+                {"detail": "Field 'status' or 'new_status' is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if target_status not in SubscriptionStatus.values:
+            return Response(
+                {"detail": f"'{target_status}' is not a valid subscription status choice."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            subscription.transition_to(target_status)
+            if subscription.status == SubscriptionStatus.ACTIVE:
+                subscription.next_billing_date = subscription.start_date
+                subscription.save(update_fields=['next_billing_date', 'updated_at'])
+        except (DjangoValidationError, DRFValidationError) as exc:
+            msg = exc.messages if hasattr(exc, 'messages') else str(exc)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(SubscriptionSerializer(subscription).data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='create-from-template', permission_classes=[IsStaffOrAdmin])
+    def create_from_template(self, request):
+        template_id = request.data.get('template') or request.data.get('template_id')
+        customer_id = request.data.get('customer') or request.data.get('customer_id')
+
+        if not template_id:
+            return Response({"template": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        if not customer_id:
+            return Response({"customer": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            template = QuotationTemplate.objects.select_related('plan').prefetch_related(
+                'lines__product', 'lines__variant'
+            ).get(pk=template_id)
+        except QuotationTemplate.DoesNotExist:
+            return Response({"template": ["Quotation template not found."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            customer = User.objects.get(pk=customer_id, role=UserRole.CUSTOMER)
+        except User.DoesNotExist:
+            return Response({"customer": ["Customer not found or user is not a customer."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        start_date_val = request.data.get('start_date')
+        if start_date_val:
+            if isinstance(start_date_val, str):
+                start_date = parse_date(start_date_val)
+                if not start_date:
+                    return Response({"start_date": ["Invalid date format. Use YYYY-MM-DD."]}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                start_date = start_date_val
+        else:
+            start_date = timezone.localdate()
+
+        discount = None
+        discount_id = request.data.get('discount') or request.data.get('discount_id')
+        if discount_id:
+            try:
+                discount = Discount.objects.get(pk=discount_id)
+            except Discount.DoesNotExist:
+                return Response({"discount": ["Discount not found."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment_terms_days = request.data.get('payment_terms_days', 30)
+        try:
+            payment_terms_days = int(payment_terms_days)
+        except (TypeError, ValueError):
+            payment_terms_days = 30
+
+        expiry_date = start_date + timezone.timedelta(days=template.validity_days)
+
+        with transaction.atomic():
+            subscription = Subscription.objects.create(
+                subscription_number=generate_subscription_number(start_date),
+                customer=customer,
+                plan=template.plan,
+                discount=discount,
+                status=SubscriptionStatus.DRAFT,
+                start_date=start_date,
+                expiry_date=expiry_date,
+                payment_terms_days=payment_terms_days,
+            )
+
+            lines_to_create = []
+            for t_line in template.lines.all():
+                price_extra = t_line.variant.price_extra if t_line.variant else Decimal('0.00')
+                unit_price = t_line.product.sales_price + price_extra
+                lines_to_create.append(
+                    SubscriptionLine(
+                        subscription=subscription,
+                        product=t_line.product,
+                        variant=t_line.variant,
+                        quantity=t_line.quantity,
+                        unit_price=unit_price
+                    )
+                )
+            if lines_to_create:
+                SubscriptionLine.objects.bulk_create(lines_to_create)
+
+        return Response(SubscriptionSerializer(subscription).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'], url_path='create_from_template', permission_classes=[IsStaffOrAdmin])
+    def create_from_template_alias(self, request):
+        return self.create_from_template(request)
+
+
+class SubscriptionLineViewSet(viewsets.ModelViewSet):
+    """
+    Subscription lines.
+    Staff and admin create and edit. Customers can only list and view their own.
+    Unit price = product.sales_price + variant.price_extra.
+    """
+    serializer_class = SubscriptionLineSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return SubscriptionLine.objects.none()
+
+        qs = SubscriptionLine.objects.select_related(
+            'subscription', 'product', 'variant', 'tax_rule'
+        ).order_by('id')
+
+        if user.role in [UserRole.ADMIN, UserRole.STAFF]:
+            return qs.all()
+        return qs.filter(subscription__customer=user)
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsCustomerOwner()]
+        return [IsStaffOrAdmin()]
+
+
+# ==========================================
+# 5. INVOICE VIEWSETS
+# ==========================================
+
+class InvoiceViewSet(viewsets.ModelViewSet):
+    """
+    Invoices endpoint.
+    - Customers can only list and view their own invoices.
+    - Staff and Admin can view all invoices, confirm, cancel, send, and log payments.
+    - Actions:
+      * POST /api/invoices/{id}/confirm/
+      * POST /api/invoices/{id}/cancel/
+      * POST /api/invoices/{id}/send/ (console email)
+      * GET  /api/invoices/{id}/pdf/ (PDF print)
+      * GET  /api/invoices/{id}/print/ (PDF print alias)
+      * POST /api/invoices/{id}/pay/ (Staff/Admin payment)
+    """
+    serializer_class = InvoiceSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Invoice.objects.none()
+
+        qs = Invoice.objects.select_related(
+            'customer', 'subscription', 'discount'
+        ).prefetch_related(
+            'lines__product', 'payments'
+        ).order_by('-issue_date', '-id')
+
+        if user.role in [UserRole.ADMIN, UserRole.STAFF]:
+            return qs.all()
+        # Customers can only view their own invoices
+        return qs.filter(customer=user)
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'pdf', 'pdf_print']:
+            return [IsCustomerOwner()]
+        return [IsStaffOrAdmin()]
+
+    @action(detail=True, methods=['post'], url_path='confirm', permission_classes=[IsStaffOrAdmin])
+    def confirm(self, request, pk=None):
+        invoice = self.get_object()
+        try:
+            invoice.transition_to(InvoiceStatus.CONFIRMED)
+        except DjangoValidationError as exc:
+            msg = exc.messages if hasattr(exc, 'messages') else str(exc)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(InvoiceSerializer(invoice).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='cancel', permission_classes=[IsStaffOrAdmin])
+    def cancel(self, request, pk=None):
+        invoice = self.get_object()
+        try:
+            invoice.transition_to(InvoiceStatus.CANCELLED)
+        except DjangoValidationError as exc:
+            msg = exc.messages if hasattr(exc, 'messages') else str(exc)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(InvoiceSerializer(invoice).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='send', permission_classes=[IsStaffOrAdmin])
+    def send_invoice(self, request, pk=None):
+        invoice = self.get_object()
+        subject = f"Invoice {invoice.invoice_number} from Brightloop Software"
+        message = (
+            f"Dear {invoice.customer.first_name or invoice.customer.email},\n\n"
+            f"Please find your invoice details below:\n"
+            f"Invoice Number: {invoice.invoice_number}\n"
+            f"Issue Date:     {invoice.issue_date}\n"
+            f"Due Date:       {invoice.due_date}\n"
+            f"Total Amount:   ${invoice.total_amount}\n"
+            f"Status:         {invoice.status}\n\n"
+            f"Thank you for your business!\n"
+            f"Brightloop Software Team"
+        )
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[invoice.customer.email],
+            fail_silently=False,
+        )
+        return Response(
+            {"detail": f"Invoice {invoice.invoice_number} sent to {invoice.customer.email}."},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['get'], url_path='pdf', permission_classes=[IsCustomerOwner])
+    def pdf(self, request, pk=None):
+        invoice = self.get_object()
+        pdf_bytes = generate_invoice_pdf(invoice)
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="invoice_{invoice.invoice_number}.pdf"'
+        return response
+
+    @action(detail=True, methods=['get'], url_path='print', permission_classes=[IsCustomerOwner])
+    def pdf_print(self, request, pk=None):
+        return self.pdf(request, pk=pk)
+
+    @action(detail=True, methods=['post'], url_path='pay', permission_classes=[IsStaffOrAdmin])
+    def pay(self, request, pk=None):
+        invoice = self.get_object()
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        data['invoice'] = invoice.id
+        serializer = PaymentSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            payment = serializer.save()
+        except DjangoValidationError as exc:
+            msg = exc.messages if hasattr(exc, 'messages') else str(exc)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
+
+
+# ==========================================
+# 6. PAYMENT VIEWSET (POST ONLY, STAFF/ADMIN)
+# ==========================================
+
+class PaymentViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin):
+    """
+    Payment endpoint: POST only, restricted to Staff and Admins.
+    Uses concurrency-safe row-level locking on Payment.save().
+    """
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    permission_classes = [IsStaffOrAdmin]
+    http_method_names = ['post', 'head', 'options']
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            payment = serializer.save()
+        except DjangoValidationError as exc:
+            msg = exc.messages if hasattr(exc, 'messages') else str(exc)
+            return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(PaymentSerializer(payment).data, status=status.HTTP_201_CREATED)
