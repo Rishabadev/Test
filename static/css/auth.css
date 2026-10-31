@@ -1,0 +1,132 @@
+/* ==========================================================================
+   Brightloop Software - Authentication CSS (Login & Signup)
+   ========================================================================== */
+
+.auth-container {
+  max-width: 460px;
+  width: 100%;
+  margin: auto;
+}
+
+.auth-card {
+  background: #ffffff;
+  border: 1px solid var(--slate-200);
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.auth-brand-logo {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1.25rem auto;
+  border-radius: 0.85rem;
+  box-shadow: 0 8px 16px rgba(30, 58, 138, 0.2);
+}
+
+/* Password Visibility Toggle */
+.password-toggle-btn {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-color: var(--slate-200);
+  color: var(--slate-500);
+  background-color: transparent;
+}
+
+.password-toggle-btn:hover {
+  color: var(--navy-900);
+  background-color: var(--slate-100);
+  border-color: var(--slate-300);
+}
+
+/* Password Requirements Checklist */
+.password-requirements-card {
+  background-color: var(--slate-50);
+  border: 1px solid var(--slate-200);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.requirement-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--slate-500);
+  transition: color 0.15s ease-in-out;
+  margin-bottom: 0.35rem;
+}
+
+.requirement-item:last-child {
+  margin-bottom: 0;
+}
+
+.requirement-item.valid {
+  color: #059669; /* Emerald 600 */
+  font-weight: 500;
+}
+
+.requirement-item.valid i {
+  color: #10b981;
+}
+
+.requirement-item.invalid i {
+  color: var(--slate-400);
+}
+
+/* Form Check styling */
+.form-check-input {
+  border-color: var(--slate-300);
+  cursor: pointer;
+}
+
+.form-check-input:checked {
+  background-color: var(--blue-600);
+  border-color: var(--blue-600);
+}
+
+.form-check-label {
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.875rem;
+  color: var(--slate-600);
+}
+
+/* Links */
+.auth-link {
+  color: var(--blue-600);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.auth-link:hover {
+  color: var(--blue-700);
+  text-decoration: underline;
+}
+
+/* Auth Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--slate-400);
+  font-size: 0.8125rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.auth-divider span {
+  padding: 0 0.75rem;
+}
+

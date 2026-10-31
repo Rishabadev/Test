@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Customer Portal | Brightloop Software{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/portal.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="portal-wrapper">
+  
+  <!-- Sidebar Backdrop (Mobile) -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <!-- Sidebar -->
+  <aside class="portal-sidebar" id="portalSidebar">
+    <!-- Sidebar Header / Brand -->
+    <div class="portal-sidebar-header d-flex align-items-center justify-content-between">
+      <a class="navbar-brand d-flex align-items-center gap-2 text-decoration-none" href="/portal/">
+        <div class="brand-icon-box bg-navy-gradient text-white rounded-3 d-flex align-items-center justify-content-center">
+          <i class="bi bi-layers-fill fs-5"></i>
+        </div>
+        <div>
+          <span class="fw-bold tracking-tight text-navy fs-5">Brightloop</span>
+          <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-1 fw-medium font-mono small">Portal</span>
+        </div>
+      </a>
+      <button class="btn btn-sm btn-link text-muted d-lg-none" id="sidebarCloseBtn" aria-label="Close Sidebar">
+        <i class="bi bi-x-lg fs-5"></i>
+      </button>
+    </div>
+
+    <!-- Sidebar Profile Snippet -->
+    <div class="px-3 py-3 border-bottom border-slate-200 bg-light d-flex align-items-center gap-2">
+      <div class="avatar-circle bg-navy-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-6" style="width: 38px; height: 38px;" id="sidebarUserAvatar">
+        C
+      </div>
+      <div class="text-truncate">
+        <div class="fw-semibold text-navy text-truncate small" id="sidebarUserName">Customer</div>
+        <div class="text-muted font-mono" style="font-size: 0.75rem;" id="sidebarUserEmail">customer@brightloop.io</div>
+      </div>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="portal-sidebar-nav">
+      <div class="text-uppercase text-slate-400 font-mono fw-semibold px-2 mb-2" style="font-size: 0.7rem; letter-spacing: 0.05em;">Menu</div>
+      <a href="#overview" class="portal-nav-item active" data-portal-tab="overview" id="navItemOverview">
+        <i class="bi bi-grid-1x2-fill"></i>
+        <span>Overview</span>
+      </a>
+      <a href="#subscriptions" class="portal-nav-item" data-portal-tab="subscriptions" id="navItemSubscriptions">
+        <i class="bi bi-arrow-repeat"></i>
+        <span>My Subscriptions</span>
+      </a>
+      <a href="#invoices" class="portal-nav-item" data-portal-tab="invoices" id="navItemInvoices">
+        <i class="bi bi-receipt-cutoff"></i>
+        <span>My Invoices</span>
+      </a>
+      <a href="#profile" class="portal-nav-item" data-portal-tab="profile" id="navItemProfile">
+        <i class="bi bi-person-badge-fill"></i>
+        <span>Profile & Account</span>
+      </a>
+    </nav>
+
+    <!-- Sidebar Footer / Logout -->
+    <div class="portal-sidebar-footer">
+      <a href="javascript:void(0)" class="portal-nav-item text-danger mb-0" onclick="auth.logout()">
+        <i class="bi bi-box-arrow-right text-danger"></i>
+        <span>Sign Out</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content Column -->
+  <div class="portal-main">
+    
+    <!-- Top Navigation Bar -->
+    <header class="portal-topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-outline-secondary btn-sm d-lg-none" id="sidebarToggle" aria-label="Toggle navigation">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">Customer Portal</span>
+          <span class="text-slate-300">/</span>
+          <span class="fw-semibold text-navy small" id="currentTabBreadcrumb">Overview</span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-light btn-sm border text-slate-600 shadow-xs" id="btnRefreshData" title="Refresh portal data">
+          <i class="bi bi-arrow-clockwise me-1"></i>
+          <span class="d-none d-sm-inline">Refresh</span>
+        </button>
+
+        <!-- Profile Dropdown -->
+        <div class="dropdown">
+          <button class="btn btn-light btn-sm border d-flex align-items-center gap-2 px-2 shadow-xs dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 26px; height: 26px; font-size: 0.75rem;" id="topbarUserAvatar">
+              C
+            </div>
+            <span class="fw-medium text-navy small d-none d-md-inline" id="topbarUserName">Customer</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-card border-slate-200 mt-1">
+            <li class="px-3 py-2 border-bottom">
+              <div class="fw-semibold text-navy small" id="topbarUserEmail">customer@brightloop.io</div>
+              <span class="badge bg-success-subtle text-success border border-success-subtle font-mono" style="font-size: 0.7rem;">CUSTOMER</span>
+            </li>
+            <li>
+              <a class="dropdown-item small py-2" href="#profile" data-portal-tab="profile">
+                <i class="bi bi-person me-2"></i> Account Details
+              </a>
+            </li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li>
+              <a class="dropdown-item small py-2 text-danger" href="javascript:void(0)" onclick="auth.logout()">
+                <i class="bi bi-box-arrow-right me-2"></i> Sign Out
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Body / Dynamic Panels -->
+    <main class="portal-body">
+
+      <!-- ================================================================== -->
+      <!-- TAB 1: OVERVIEW -->
+      <!-- ================================================================== -->
+      <section class="portal-panel" id="panel-overview">
+        <!-- Welcome Banner -->
+        <div class="bg-white rounded-card border border-slate-200 shadow-xs p-4 p-md-4 mb-4">
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-success text-white font-mono small">VERIFIED CUSTOMER</span>
+              </div>
+              <h3 class="fw-bold text-navy tracking-tight mb-1" id="welcomeUserHeading">Welcome back!</h3>
+              <p class="text-slate-500 small mb-0">Here is a summary of your Brightloop subscriptions, billing plans, and recent invoices.</p>
+            </div>
+            <div class="d-flex gap-2">
+              <a href="#subscriptions" class="btn btn-outline-primary btn-sm px-3 fw-medium" data-portal-tab="subscriptions">
+                <i class="bi bi-arrow-repeat me-1"></i> View Subscriptions
+              </a>
+              <a href="#invoices" class="btn btn-primary btn-sm px-3 fw-medium" data-portal-tab="invoices">
+                <i class="bi bi-receipt me-1"></i> View Invoices
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div class="row g-3 mb-4">
+          <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-medium">Total Subscriptions</span>
+                <div class="kpi-icon-box bg-primary-subtle text-primary">
+                  <i class="bi bi-layers"></i>
+                </div>
+              </div>
+              <h3 class="fw-bold text-navy mb-0" id="kpiTotalSubs">--</h3>
+              <small class="text-muted">Enrolled services</small>
+            </div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-medium">Active Subscriptions</span>
+                <div class="kpi-icon-box bg-success-subtle text-success">
+                  <i class="bi bi-check-circle"></i>
+                </div>
+              </div>
+              <h3 class="fw-bold text-success mb-0" id="kpiActiveSubs">--</h3>
+              <small class="text-muted">Currently billing</small>
+            </div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-medium">Pending Subscriptions</span>
+                <div class="kpi-icon-box bg-info-subtle text-info">
+                  <i class="bi bi-hourglass-split"></i>
+                </div>
+              </div>
+              <h3 class="fw-bold text-info mb-0" id="kpiPendingSubs">--</h3>
+              <small class="text-muted">Quotations & drafts</small>
+            </div>
+          </div>
+          <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card" id="kpiOutstandingCard">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted small fw-medium">Outstanding Balance</span>
+                <div class="kpi-icon-box bg-warning-subtle text-warning-emphasis">
+                  <i class="bi bi-cash-stack"></i>
+                </div>
+              </div>
+              <h3 class="fw-bold text-slate-900 mb-0" id="kpiOutstanding">--</h3>
+              <small class="text-muted">Total unpaid amount</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-Column Grid: Recent Invoices & Recent Subscriptions -->
+        <div class="row g-4">
+          <!-- Recent Invoices Table -->
+          <div class="col-lg-6">
+            <div class="bg-white rounded-card border border-slate-200 shadow-xs h-100 p-4 d-flex flex-column">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-receipt-cutoff text-primary fs-5"></i>
+                  <h5 class="fw-bold text-navy mb-0">Recent Invoices</h5>
+                </div>
+                <a href="#invoices" class="auth-link small" data-portal-tab="invoices">View all &rarr;</a>
+              </div>
+              <div class="table-responsive flex-grow-1">
+                <table class="table table-portal align-middle">
+                  <thead>
+                    <tr>
+                      <th>Invoice #</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th class="text-end">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentInvoicesTbody">
+                    <tr>
+                      <td colspan="5" class="py-4 text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Subscriptions Table -->
+          <div class="col-lg-6">
+            <div class="bg-white rounded-card border border-slate-200 shadow-xs h-100 p-4 d-flex flex-column">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-arrow-repeat text-primary fs-5"></i>
+                  <h5 class="fw-bold text-navy mb-0">Recent Subscriptions</h5>
+                </div>
+                <a href="#subscriptions" class="auth-link small" data-portal-tab="subscriptions">View all &rarr;</a>
+              </div>
+              <div class="table-responsive flex-grow-1">
+                <table class="table table-portal align-middle">
+                  <thead>
+                    <tr>
+                      <th>Subscription #</th>
+                      <th>Plan</th>
+                      <th>Frequency</th>
+                      <th>Status</th>
+                      <th class="text-end">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recentSubscriptionsTbody">
+                    <tr>
+                      <td colspan="5" class="py-4 text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- TAB 2: MY SUBSCRIPTIONS -->
+      <!-- ================================================================== -->
+      <section class="portal-panel d-none" id="panel-subscriptions">
+        <div class="bg-white rounded-card border border-slate-200 shadow-xs p-4 mb-4">
+          
+          <!-- Header & Toolbar -->
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h4 class="fw-bold text-navy tracking-tight mb-0">My Subscriptions</h4>
+                <span class="badge bg-light text-slate-700 border font-mono small" id="subTotalCountBadge">-- total</span>
+              </div>
+              <p class="text-slate-500 small mb-0">Active plans, renewal schedules, and subscribed software packages.</p>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div class="input-group input-group-sm" style="max-width: 220px;">
+                <span class="input-group-text bg-white border-end-0 text-muted">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control border-start-0 ps-0" placeholder="Search number/plan..." id="subSearchInput">
+              </div>
+
+              <select class="form-select form-select-sm" style="width: auto;" id="subStatusFilter">
+                <option value="ALL">All Statuses</option>
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="CONFIRMED">CONFIRMED</option>
+                <option value="QUOTATION">QUOTATION</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="PAUSED">PAUSED</option>
+                <option value="CLOSED">CLOSED</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-responsive" id="subscriptionsTableWrapper">
+            <table class="table table-portal">
+              <thead>
+                <tr>
+                  <th>Subscription #</th>
+                  <th>Plan Name</th>
+                  <th>Start Date</th>
+                  <th>Expiry Date</th>
+                  <th>Amount</th>
+                  <th>Billing Frequency</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="subscriptionsTableBody">
+                <!-- Populated dynamically via portal.js -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty State -->
+          <div class="empty-state d-none" id="subscriptionsEmptyState">
+            <div class="empty-state-icon">
+              <i class="bi bi-layers"></i>
+            </div>
+            <h6 class="fw-semibold text-navy mb-1">No subscriptions found</h6>
+            <p class="text-muted small mb-3">No subscription records match your search or filter criteria.</p>
+            <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('subSearchInput').value=''; document.getElementById('subStatusFilter').value='ALL'; portal.state.subFilter={search:'',status:'ALL',page:1,pageSize:10}; portal.renderSubscriptionsTable();">
+              Reset Filters
+            </button>
+          </div>
+
+          <!-- Pagination -->
+          <div id="subPaginationContainer" class="mt-2"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- TAB 3: MY INVOICES -->
+      <!-- ================================================================== -->
+      <section class="portal-panel d-none" id="panel-invoices">
+        <div class="bg-white rounded-card border border-slate-200 shadow-xs p-4 mb-4">
+          
+          <!-- Header & Toolbar -->
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <h4 class="fw-bold text-navy tracking-tight mb-0">My Invoices</h4>
+                <span class="badge bg-light text-slate-700 border font-mono small" id="invTotalCountBadge">-- total</span>
+              </div>
+              <p class="text-slate-500 small mb-0">Billing statements, payment history, and downloadable PDF receipts.</p>
+            </div>
+
+            <!-- Filter Controls -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div class="input-group input-group-sm" style="max-width: 220px;">
+                <span class="input-group-text bg-white border-end-0 text-muted">
+                  <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control border-start-0 ps-0" placeholder="Search invoice #..." id="invSearchInput">
+              </div>
+
+              <select class="form-select form-select-sm" style="width: auto;" id="invStatusFilter">
+                <option value="ALL">All Statuses</option>
+                <option value="OVERDUE">Overdue Invoices</option>
+                <option value="CONFIRMED">CONFIRMED (Open)</option>
+                <option value="PAID">PAID</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Table Container -->
+          <div class="table-responsive" id="invoicesTableWrapper">
+            <table class="table table-portal">
+              <thead>
+                <tr>
+                  <th>Invoice #</th>
+                  <th>Invoice Date</th>
+                  <th>Due Date</th>
+                  <th>Total Amount</th>
+                  <th>Amount Paid</th>
+                  <th>Outstanding</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="invoicesTableBody">
+                <!-- Populated dynamically via portal.js -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty State -->
+          <div class="empty-state d-none" id="invoicesEmptyState">
+            <div class="empty-state-icon">
+              <i class="bi bi-receipt"></i>
+            </div>
+            <h6 class="fw-semibold text-navy mb-1">No invoices found</h6>
+            <p class="text-muted small mb-3">No billing invoice records match your search or filter criteria.</p>
+            <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('invSearchInput').value=''; document.getElementById('invStatusFilter').value='ALL'; portal.state.invFilter={search:'',status:'ALL',page:1,pageSize:10}; portal.renderInvoicesTable();">
+              Reset Filters
+            </button>
+          </div>
+
+          <!-- Pagination -->
+          <div id="invPaginationContainer" class="mt-2"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================== -->
+      <!-- TAB 4: PROFILE & ACCOUNT -->
+      <!-- ================================================================== -->
+      <section class="portal-panel d-none" id="panel-profile">
+        <div class="row justify-content-center">
+          <div class="col-lg-8">
+            <div class="bg-white rounded-card border border-slate-200 shadow-xs p-4 p-md-5 mb-4">
+              <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                <div class="avatar-lg bg-navy-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 56px; height: 56px;">
+                  <i class="bi bi-person-fill"></i>
+                </div>
+                <div>
+                  <h4 class="fw-bold text-navy mb-0" id="profFullName">Customer Profile</h4>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle font-mono small" id="profRole">CUSTOMER</span>
+                </div>
+              </div>
+
+              <!-- Profile Details -->
+              <div class="row g-3 mb-4">
+                <div class="col-sm-6">
+                  <div class="p-3 bg-light rounded-3 border">
+                    <span class="text-muted small">Account ID</span>
+                    <h6 class="fw-bold text-navy font-mono mb-0" id="profUserId">--</h6>
+                  </div>
+                </div>
+                <div class="col-sm-6">
+                  <div class="p-3 bg-light rounded-3 border">
+                    <span class="text-muted small">Email Address</span>
+                    <h6 class="fw-bold text-navy mb-0" id="profEmail">--</h6>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Security Information Note -->
+              <div class="p-3 bg-primary-subtle border border-primary-subtle rounded-3 text-primary-emphasis small mb-4">
+                <div class="d-flex align-items-center gap-2 fw-semibold mb-1">
+                  <i class="bi bi-shield-check fs-6 text-primary"></i>
+                  <span>Tenant Isolation & RBAC Security</span>
+                </div>
+                <p class="mb-0">
+                  Your customer account operates in an isolated tenant scope. Subscriptions and invoices shown in this portal are restricted to your authenticated user account.
+                </p>
+              </div>
+
+              <div class="d-flex justify-content-end">
+                <button class="btn btn-outline-danger btn-sm px-4 fw-medium" onclick="auth.logout()">
+                  <i class="bi bi-box-arrow-right me-1"></i> Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- MODAL 1: SUBSCRIPTION DETAILS -->
+<!-- ================================================================== -->
+<div class="modal fade" id="subscriptionDetailModal" tabindex="-1" aria-labelledby="subModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-bottom py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-arrow-repeat text-primary fs-5"></i>
+          <h5 class="modal-title fw-bold text-navy font-mono" id="subModalTitle">
+            <span id="modalSubNumber">SUB-2026-XXXX</span>
+          </h5>
+          <span id="modalSubStatus"></span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <!-- Metadata Overview -->
+        <div class="row g-3 p-3 bg-light rounded-3 border border-slate-200 mb-4">
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Plan Name</span>
+            <div class="fw-semibold text-navy text-truncate" id="modalSubPlan">--</div>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Billing Frequency</span>
+            <div class="fw-semibold text-capitalize" id="modalSubFrequency">--</div>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Start Date</span>
+            <div class="fw-semibold text-slate-700" id="modalSubStartDate">--</div>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Expiry Date</span>
+            <div class="fw-semibold text-slate-700" id="modalSubExpiryDate">--</div>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Next Billing Date</span>
+            <div class="fw-semibold text-primary" id="modalSubNextBilling">--</div>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Payment Terms</span>
+            <div class="fw-semibold text-slate-700" id="modalSubTerms">30 days</div>
+          </div>
+        </div>
+
+        <!-- Lines Table -->
+        <h6 class="fw-bold text-navy mb-2">Configured Items & Services</h6>
+        <div class="table-responsive border rounded-3 mb-3">
+          <table class="table table-portal mb-0">
+            <thead>
+              <tr>
+                <th>Item / Description</th>
+                <th class="text-center">Qty</th>
+                <th>Unit Price</th>
+                <th>Tax Rate</th>
+                <th class="text-end">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="modalSubLinesTbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Total Calculation -->
+        <div class="d-flex justify-content-end p-2">
+          <div class="text-end">
+            <span class="text-muted small me-2">Recurring Cycle Total:</span>
+            <span class="fw-bold fs-5 text-navy" id="modalSubTotal">$0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-top py-2 px-4">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- MODAL 2: INVOICE DETAILS & PDF PRINT -->
+<!-- ================================================================== -->
+<div class="modal fade" id="invoiceDetailModal" tabindex="-1" aria-labelledby="invModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      
+      <!-- Modal Header -->
+      <div class="modal-header border-bottom py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-receipt-cutoff text-primary fs-5"></i>
+          <h5 class="modal-title fw-bold text-navy font-mono mb-0" id="modalInvNumber">
+            INV-2026-XXXX
+          </h5>
+          <span id="modalInvStatus"></span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        
+        <!-- Overdue Warning Alert -->
+        <div class="alert alert-danger d-none d-flex align-items-center gap-2 py-2 px-3 small rounded-3 mb-3" id="modalInvOverdueAlert">
+          <i class="bi bi-exclamation-triangle-fill fs-6"></i>
+          <span>This invoice is currently <strong>overdue</strong>. Please arrange payment as soon as possible.</span>
+        </div>
+
+        <!-- Customer & Statement Info -->
+        <div class="row g-3 p-3 bg-light rounded-3 border border-slate-200 mb-4">
+          <div class="col-sm-6 col-md-4">
+            <span class="text-muted small">Billed To</span>
+            <div class="fw-semibold text-navy text-truncate" id="modalInvCustName">--</div>
+            <div class="text-muted font-mono small text-truncate" id="modalInvCustEmail">--</div>
+          </div>
+          <div class="col-sm-6 col-md-4">
+            <span class="text-muted small">Issue & Due Date</span>
+            <div class="fw-semibold text-slate-700">Issue: <span id="modalInvIssueDate">--</span></div>
+            <div class="text-slate-600 small">Due: <span id="modalInvDueDate">--</span></div>
+          </div>
+          <div class="col-sm-6 col-md-4">
+            <span class="text-muted small">Subscription / Period</span>
+            <div class="fw-semibold text-navy font-mono small" id="modalInvSubNumber">--</div>
+            <div class="text-muted small" id="modalInvPeriod">--</div>
+          </div>
+        </div>
+
+        <!-- Lines Table -->
+        <h6 class="fw-bold text-navy mb-2">Invoice Line Items</h6>
+        <div class="table-responsive border rounded-3 mb-4">
+          <table class="table table-portal mb-0">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th class="text-center">Qty</th>
+                <th>Unit Price</th>
+                <th>Subtotal</th>
+                <th>Tax</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody id="modalInvLinesTbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Financial Summary Breakdown -->
+        <div class="row justify-content-end mb-4">
+          <div class="col-md-6 col-lg-5">
+            <div class="bg-light p-3 rounded-3 border">
+              <div class="d-flex justify-content-between mb-1 small text-slate-600">
+                <span>Subtotal:</span>
+                <span class="fw-medium font-mono" id="modalInvSubtotal">$0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1 small text-slate-600">
+                <span>Tax:</span>
+                <span class="fw-medium font-mono" id="modalInvTax">$0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1 small text-success d-none" id="modalInvDiscountRow">
+                <span>Discount Applied:</span>
+                <span class="fw-semibold font-mono" id="modalInvDiscount">-$0.00</span>
+              </div>
+              <hr class="my-2 border-slate-300">
+              <div class="d-flex justify-content-between mb-1 fw-bold text-navy">
+                <span>Grand Total:</span>
+                <span class="font-mono fs-6" id="modalInvGrandTotal">$0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1 small text-success">
+                <span>Amount Paid:</span>
+                <span class="font-mono" id="modalInvPaid">$0.00</span>
+              </div>
+              <div class="d-flex justify-content-between pt-1 fw-bold text-danger border-top">
+                <span>Balance Due:</span>
+                <span class="font-mono fs-6" id="modalInvDue">$0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment History (if any) -->
+        <div class="d-none" id="modalInvPaymentsSection">
+          <h6 class="fw-bold text-navy mb-2">Payment Records</h6>
+          <div class="table-responsive border rounded-3">
+            <table class="table table-portal mb-0 small">
+              <thead>
+                <tr>
+                  <th>Payment Date</th>
+                  <th>Method</th>
+                  <th>Reference</th>
+                  <th class="text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="modalInvPaymentsTbody">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" id="btnModalPrint">
+            <i class="bi bi-printer me-1"></i> Print Invoice
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnModalDownloadPdf">
+            <i class="bi bi-download me-1"></i> Download PDF
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Portal JavaScript Controller -->
+<script src="{% static 'js/portal.js' %}"></script>
+{% endblock %}
+

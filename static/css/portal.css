@@ -1,0 +1,322 @@
+/* ==========================================================================
+   Brightloop Software - Customer Portal Stylesheet
+   Modern SaaS Dashboard Layout with Responsive Sidebar & Theme Components
+   ========================================================================== */
+
+/* Layout Grid */
+.portal-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--slate-50);
+}
+
+/* Sidebar */
+.portal-sidebar {
+  width: 270px;
+  background-color: #ffffff;
+  border-right: 1px solid var(--slate-200);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1040;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portal-sidebar-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.portal-sidebar-nav {
+  padding: 1rem 0.75rem;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.portal-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.95rem;
+  color: var(--slate-600);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9125rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.25rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.portal-nav-item i {
+  font-size: 1.15rem;
+  color: var(--slate-400);
+  transition: color 0.15s ease;
+}
+
+.portal-nav-item:hover {
+  background-color: var(--slate-100);
+  color: var(--navy-900);
+}
+
+.portal-nav-item:hover i {
+  color: var(--blue-600);
+}
+
+.portal-nav-item.active {
+  background-color: var(--blue-50);
+  color: var(--blue-700);
+  font-weight: 600;
+}
+
+.portal-nav-item.active i {
+  color: var(--blue-600);
+}
+
+.portal-sidebar-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--slate-200);
+  background-color: var(--slate-50);
+}
+
+/* Main Content Area */
+.portal-main {
+  flex-grow: 1;
+  margin-left: 270px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Top Navbar */
+.portal-topbar {
+  height: 68px;
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--slate-200);
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1020;
+}
+
+.portal-body {
+  padding: 2rem 1.5rem;
+  flex-grow: 1;
+}
+
+/* Sidebar Backdrop on Mobile */
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 1030;
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .portal-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .portal-sidebar.show {
+    transform: translateX(0);
+  }
+
+  .portal-main {
+    margin-left: 0;
+  }
+
+  .sidebar-backdrop.show {
+    display: block;
+  }
+}
+
+/* KPI Cards */
+.kpi-card {
+  background: #ffffff;
+  border: 1px solid var(--slate-200);
+  border-radius: 0.85rem;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.06);
+}
+
+.kpi-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+/* Status Badges */
+.badge-status {
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge-status-active {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-status-confirmed {
+  background-color: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.badge-status-paid {
+  background-color: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.badge-status-draft {
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.badge-status-quotation {
+  background-color: #f5f3ff;
+  color: #5b21b6;
+  border: 1px solid #ddd6fe;
+}
+
+.badge-status-paused {
+  background-color: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.badge-status-closed {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.badge-status-cancelled {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.badge-status-overdue {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  animation: pulseWarning 2s infinite ease-in-out;
+}
+
+@keyframes pulseWarning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+/* Modern Tables */
+.table-portal {
+  margin-bottom: 0;
+  vertical-align: middle;
+}
+
+.table-portal th {
+  background-color: #f8fafc;
+  color: var(--slate-600);
+  font-weight: 600;
+  font-size: 0.785rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--slate-200);
+  white-space: nowrap;
+}
+
+.table-portal td {
+  padding: 0.95rem 1rem;
+  color: var(--slate-700);
+  font-size: 0.8875rem;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.table-portal tbody tr:hover {
+  background-color: #fbfcfe;
+}
+
+/* Loading Skeletons */
+.skeleton-box {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.35rem;
+  height: 1rem;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Empty States */
+.empty-state {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.empty-state-icon {
+  width: 64px;
+  height: 64px;
+  background-color: var(--slate-100);
+  color: var(--slate-400);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background-color: #ffffff !important;
+  }
+  .portal-sidebar, .portal-topbar, .btn-print-hide, .modal-footer {
+    display: none !important;
+  }
+  .portal-main {
+    margin-left: 0 !important;
+  }
+  .modal {
+    position: static !important;
+    display: block !important;
+  }
+  .modal-dialog {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+}
+

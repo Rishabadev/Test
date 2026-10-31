@@ -515,6 +515,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     subscription_number = serializers.CharField(read_only=True)
     customer_email = serializers.EmailField(source='customer.email', read_only=True)
     plan_name = serializers.CharField(source='plan.name', read_only=True)
+    plan_billing_period = serializers.CharField(source='plan.billing_period', read_only=True)
+    plan_price = serializers.DecimalField(source='plan.price', max_digits=12, decimal_places=2, read_only=True)
+    total_amount = serializers.SerializerMethodField(read_only=True)
     discount_code = serializers.CharField(source='discount.code', read_only=True, allow_null=True)
     lines = SubscriptionLineNestedSerializer(many=True, required=False)
 
@@ -522,11 +525,18 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         model = Subscription
         fields = (
             'id', 'subscription_number', 'customer', 'customer_email',
-            'plan', 'plan_name', 'discount', 'discount_code', 'status',
+            'plan', 'plan_name', 'plan_billing_period', 'plan_price', 'total_amount',
+            'discount', 'discount_code', 'status',
             'start_date', 'expiry_date', 'next_billing_date',
             'payment_terms_days', 'lines', 'created_at', 'updated_at'
         )
         read_only_fields = ('id', 'subscription_number', 'created_at', 'updated_at')
+
+    def get_total_amount(self, obj):
+        total = Decimal('0.00')
+        for line in obj.lines.all():
+            total += line.subtotal
+        return total
 
     def validate_customer(self, value):
         if value.role != UserRole.CUSTOMER:
@@ -649,6 +659,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 class InvoiceSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source='customer.email', read_only=True)
+    customer_name = serializers.SerializerMethodField(read_only=True)
     subscription_number = serializers.CharField(
         source='subscription.subscription_number',
         read_only=True,
@@ -665,10 +676,63 @@ class InvoiceSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = (
             'id', 'invoice_number', 'subscription', 'subscription_number',
-            'customer', 'customer_email', 'discount', 'discount_code',
+            'customer', 'customer_email', 'customer_name', 'discount', 'discount_code',
             'status', 'issue_date', 'due_date', 'billing_period_start',
             'billing_period_end', 'subtotal', 'tax_amount', 'discount_amount',
             'total_amount', 'amount_paid', 'amount_due', 'is_overdue',
             'lines', 'payments', 'created_at', 'updated_at'
         )
         read_only_fields = fields
+
+    def get_customer_name(self, obj):
+        name = f"{obj.customer.first_name} {obj.customer.last_name}".strip()
+        return name or obj.customer.email
+
+
+# ==========================================
+# 7. DASHBOARD SERIALIZERS
+# ==========================================
+
+class DashboardOverviewSerializer(serializers.Serializer):
+    active_subscription_count = serializers.IntegerField()
+    total_revenue = serializers.DecimalField(max_digits=14, decimal_places=2)
+    total_outstanding_amount = serializers.DecimalField(max_digits=14, decimal_places=2)
+    overdue_invoices_count = serializers.IntegerField()
+    overdue_amount = serializers.DecimalField(max_digits=14, decimal_places=2)
+    currency = serializers.CharField(default="USD")
+
+
+class DashboardOverdueInvoiceSerializer(serializers.ModelSerializer):
+    customer_email = serializers.EmailField(source='customer.email', read_only=True)
+    subscription_number = serializers.CharField(source='subscription.subscription_number', read_only=True, allow_null=True)
+    amount_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    amount_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    days_overdue = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Invoice
+        fields = (
+            'id', 'invoice_number', 'customer', 'customer_email',
+            'subscription', 'subscription_number', 'status',
+            'issue_date', 'due_date', 'total_amount',
+            'amount_paid', 'amount_due', 'days_overdue'
+        )
+
+    def get_days_overdue(self, obj):
+        today = timezone.localdate()
+        if obj.due_date and obj.due_date < today:
+            return (today - obj.due_date).days
+        return 0
+
+
+class DashboardPaymentSerializer(serializers.ModelSerializer):
+    invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True)
+    customer_id = serializers.IntegerField(source='invoice.customer_id', read_only=True)
+    customer_email = serializers.EmailField(source='invoice.customer.email', read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = (
+            'id', 'invoice', 'invoice_number', 'customer_id', 'customer_email',
+            'amount', 'payment_date', 'method', 'transaction_reference', 'note'
+        )

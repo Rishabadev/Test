@@ -20,6 +20,7 @@ from core.views import (
     SubscriptionLineViewSet,
     InvoiceViewSet,
     PaymentViewSet,
+    DashboardViewSet,
 )
 
 router = DefaultRouter()
@@ -34,6 +35,7 @@ router.register('subscriptions', SubscriptionViewSet, basename='subscription')
 router.register('subscription-lines', SubscriptionLineViewSet, basename='subscription-line')
 router.register('invoices', InvoiceViewSet, basename='invoice')
 router.register('payments', PaymentViewSet, basename='payment')
+router.register('dashboard', DashboardViewSet, basename='dashboard')
 
 urlpatterns = [
     # Public Authentication
