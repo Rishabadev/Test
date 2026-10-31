@@ -876,3 +876,9 @@ def portal_view(request):
     """Renders the Customer Portal application."""
     return render(request, 'portal/customer-portal.html')
 
+
+def products_view(request):
+    """Renders the Products & Variant Management module for Admins."""
+    return render(request, 'products/products.html')
+
+

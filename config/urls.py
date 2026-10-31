@@ -13,6 +13,7 @@ from core.views import (
     signup_view,
     dashboard_view,
     portal_view,
+    products_view,
 )
 
 urlpatterns = [
@@ -25,4 +26,5 @@ urlpatterns = [
     path('signup/', signup_view, name='signup'),
     path('dashboard/', dashboard_view, name='dashboard-frontend'),
     path('portal/', portal_view, name='portal-frontend'),
+    path('products/', products_view, name='products-frontend'),
 ]

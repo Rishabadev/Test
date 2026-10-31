@@ -1,0 +1,960 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Products & Plans Catalog | Brightloop Software{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/products.css' %}">
+<style>
+  /* Hide global base.html navbar and footer for full dashboard experience */
+  body > .page-wrapper > header.navbar,
+  body > .page-wrapper > footer {
+    display: none !important;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper" id="dashWrapper">
+
+  <!-- Mobile Backdrop -->
+  <div class="sidebar-backdrop" id="prodSidebarBackdrop"></div>
+
+  <!-- Sidebar -->
+  <aside class="dashboard-sidebar" id="dashSidebar">
+    
+    <!-- Sidebar Header -->
+    <div class="dashboard-sidebar-header">
+      <a class="navbar-brand d-flex align-items-center gap-2 text-decoration-none text-white" href="/dashboard/">
+        <div class="brand-icon-box bg-primary text-white rounded-3 d-flex align-items-center justify-content-center">
+          <i class="bi bi-layers-fill fs-5"></i>
+        </div>
+        <div>
+          <span class="fw-bold tracking-tight text-white fs-5 brand-title">Brightloop</span>
+          <span class="badge bg-danger text-white font-mono ms-1" style="font-size: 0.65rem;">ADMIN</span>
+        </div>
+      </a>
+      <button class="btn btn-sm btn-link text-white-50 d-lg-none" id="prodSidebarCloseBtn" aria-label="Close Sidebar">
+        <i class="bi bi-x-lg fs-5"></i>
+      </button>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="dashboard-sidebar-nav">
+      
+      <!-- Core Module -->
+      <div class="nav-section-title">Core</div>
+      <a href="/dashboard/" class="dash-nav-item" id="navDashboard">
+        <i class="bi bi-grid-1x2-fill"></i>
+        <span class="nav-text">Dashboard</span>
+      </a>
+
+      <!-- Billing & Operations -->
+      <div class="nav-section-title">Operations</div>
+      <a href="/dashboard/#paymentsSection" class="dash-nav-item" id="navPayments">
+        <i class="bi bi-cash-stack"></i>
+        <span class="nav-text">Payments</span>
+      </a>
+      <a href="/dashboard/#invoicesSection" class="dash-nav-item" id="navInvoices">
+        <i class="bi bi-receipt-cutoff"></i>
+        <span class="nav-text">Invoices</span>
+      </a>
+      <a href="/dashboard/#subscriptionsSection" class="dash-nav-item" id="navSubscriptions">
+        <i class="bi bi-arrow-repeat"></i>
+        <span class="nav-text">Subscriptions</span>
+      </a>
+
+      <!-- Admin-Only Section -->
+      <div class="nav-section-title" id="sectionAdminHeader">Administration</div>
+      <a href="/products/" class="dash-nav-item active" id="navProducts">
+        <i class="bi bi-box-seam-fill"></i>
+        <span class="nav-text">Products &amp; Plans</span>
+        <span class="dash-nav-badge bg-danger text-white">Admin</span>
+      </a>
+      <a href="javascript:void(0)" class="dash-nav-item" onclick="products.switchTab('plans')" id="navPlans">
+        <i class="bi bi-calendar3-range-fill"></i>
+        <span class="nav-text">Plans</span>
+      </a>
+      <a href="javascript:void(0)" class="dash-nav-item" onclick="products.switchTab('discounts')" id="navDiscounts">
+        <i class="bi bi-percent"></i>
+        <span class="nav-text">Discounts</span>
+      </a>
+    </nav>
+
+    <!-- Sidebar Footer / Logout -->
+    <div class="dashboard-sidebar-footer">
+      <a href="javascript:void(0)" class="dash-nav-item text-danger mb-0" id="navLogout" onclick="auth.logout()">
+        <i class="bi bi-box-arrow-right text-danger"></i>
+        <span class="nav-text">Sign Out</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content Column -->
+  <div class="dashboard-main">
+    
+    <!-- Top Navigation Bar -->
+    <header class="dashboard-topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-outline-secondary btn-sm" id="prodSidebarToggle" aria-label="Toggle navigation" title="Toggle sidebar">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">Administration</span>
+          <span class="text-slate-300">/</span>
+          <span class="text-muted small">Catalog</span>
+          <span class="text-slate-300">/</span>
+          <span class="fw-semibold text-navy small">Products &amp; Plans</span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        
+        <!-- Tax Rules Modal Trigger -->
+        <button class="btn btn-outline-secondary btn-sm shadow-xs" onclick="products.openTaxRulesModal()" title="Configure regional tax rules">
+          <i class="bi bi-percent me-1"></i>
+          <span>Tax Rules</span>
+        </button>
+
+        <!-- Add Plan Button -->
+        <button class="btn btn-outline-primary btn-sm shadow-xs" onclick="products.openAddPlanModal()" title="Create a new subscription plan">
+          <i class="bi bi-calendar-plus me-1"></i>
+          <span>Add Plan</span>
+        </button>
+
+        <!-- Add Product Button -->
+        <button class="btn btn-primary btn-sm shadow-xs" onclick="products.openAddProductModal()" title="Create a new catalog product">
+          <i class="bi bi-plus-lg me-1"></i>
+          <span>Add Product</span>
+        </button>
+
+        <!-- User Profile Dropdown -->
+        <div class="dropdown ms-2">
+          <button class="btn btn-light btn-sm border d-flex align-items-center gap-2 px-2 shadow-xs dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="avatar-sm bg-navy-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;" id="prodTopUserAvatar">
+              A
+            </div>
+            <div class="d-none d-md-inline text-start">
+              <span class="fw-medium text-navy small d-block leading-tight" id="prodTopUserName">Administrator</span>
+            </div>
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1 font-mono">ADMIN</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-card border-slate-200 mt-1">
+            <li class="px-3 py-2 border-bottom">
+              <div class="fw-semibold text-navy small" id="prodTopUserEmail">admin@brightloop.io</div>
+              <small class="text-muted">Administrator Workspace</small>
+            </li>
+            <li>
+              <a class="dropdown-item small py-2" href="/dashboard/">
+                <i class="bi bi-grid-1x2-fill me-2 text-primary"></i> Finance Dashboard
+              </a>
+            </li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li>
+              <a class="dropdown-item small py-2 text-danger" href="javascript:void(0)" onclick="auth.logout()">
+                <i class="bi bi-box-arrow-right me-2"></i> Sign Out
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Body Content -->
+    <main class="dashboard-body">
+
+      <!-- Page Header -->
+      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-3">
+        <div>
+          <h4 class="fw-bold text-navy tracking-tight mb-1">Products &amp; Plans Management</h4>
+          <p class="text-slate-500 small mb-0">Unified catalog for software licenses, hardware items, variant modifiers, recurring billing plans, and discount codes.</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="products.loadCatalogData()" title="Reload catalog from server">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Module Navigation Tabs -->
+      <ul class="nav nav-pills mb-4 gap-2 bg-white p-2 rounded-3 border border-slate-200 shadow-xs" id="catalogPillsTab" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active px-3 py-1-5 fw-semibold small" id="tab-products-btn" data-bs-toggle="pill" data-bs-target="#tab-products" type="button" role="tab">
+            <i class="bi bi-boxes me-1 text-primary"></i> Products &amp; Variants
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link px-3 py-1-5 fw-semibold small" id="tab-plans-btn" data-bs-toggle="pill" data-bs-target="#tab-plans" type="button" role="tab">
+            <i class="bi bi-calendar3-range me-1 text-success"></i> Subscription Plans
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link px-3 py-1-5 fw-semibold small" id="tab-discounts-btn" data-bs-toggle="pill" data-bs-target="#tab-discounts" type="button" role="tab">
+            <i class="bi bi-percent me-1 text-warning"></i> Discounts
+          </button>
+        </li>
+      </ul>
+
+      <!-- KPI Metric Cards -->
+      <div class="row g-3 mb-4">
+        
+        <!-- Total Products -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-blue-subtle text-primary">
+              <i class="bi bi-box-seam-fill"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Total Products</span>
+              <h3 class="stat-value text-navy" id="statTotalProducts">0</h3>
+              <span class="stat-badge text-primary bg-primary-subtle">
+                <i class="bi bi-check-circle me-1"></i> All categories
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Available Plans -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-success-subtle text-success">
+              <i class="bi bi-calendar3-range-fill"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Billing Plans</span>
+              <h3 class="stat-value text-success" id="statTotalPlans">0</h3>
+              <span class="stat-badge text-success bg-success-subtle">
+                <i class="bi bi-arrow-repeat me-1"></i> Daily / Mo / Yr
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configured Variants -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper" style="background-color: #f5f3ff; color: #7c3aed;">
+              <i class="bi bi-sliders"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Active Variants</span>
+              <h3 class="stat-value text-navy" id="statTotalVariants">0</h3>
+              <span class="stat-badge" style="background-color: #f5f3ff; color: #7c3aed;">
+                <i class="bi bi-tags me-1"></i> Price extra modifiers
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Tax Rules -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-warning-subtle text-warning">
+              <i class="bi bi-percent"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Tax Rules</span>
+              <h3 class="stat-value text-navy" id="statTotalTaxRules">0</h3>
+              <span class="stat-badge text-warning bg-warning-subtle">
+                <i class="bi bi-receipt me-1"></i> Regional rates
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="tab-content" id="catalogTabContent">
+        
+        <!-- =================================================================== -->
+        <!-- TAB 1: PRODUCTS & VARIANTS -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade show active" id="tab-products" role="tabpanel">
+          
+          <!-- Filters & Actions Card -->
+          <div class="card border-slate-200 shadow-xs rounded-3 mb-4">
+            <div class="card-body p-3">
+              <div class="row g-2 align-items-center">
+                
+                <!-- Search -->
+                <div class="col-12 col-md-5">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-slate-200 text-slate-400">
+                      <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control border-slate-200" id="prodSearchInput" placeholder="Search products by name or notes...">
+                  </div>
+                </div>
+
+                <!-- Product Type Filter -->
+                <div class="col-6 col-md-3">
+                  <select class="form-select form-select-sm border-slate-200" id="prodTypeFilter">
+                    <option value="ALL">All Product Types</option>
+                    <option value="SOFTWARE">Software</option>
+                    <option value="SERVICE">Service</option>
+                    <option value="HARDWARE">Hardware</option>
+                    <option value="CONSUMABLE">Consumable</option>
+                  </select>
+                </div>
+
+                <!-- Status Filter -->
+                <div class="col-6 col-md-2">
+                  <select class="form-select form-select-sm border-slate-200" id="prodStatusFilter">
+                    <option value="ALL">All Statuses</option>
+                    <option value="ACTIVE">Active Only</option>
+                    <option value="INACTIVE">Inactive Only</option>
+                  </select>
+                </div>
+
+                <!-- Reset Filters -->
+                <div class="col-12 col-md-2 text-md-end">
+                  <button class="btn btn-outline-secondary btn-sm w-100" id="btnResetProdFilters">
+                    <i class="bi bi-x-circle me-1"></i> Reset
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Products Listing Table -->
+          <div class="card border-slate-200 shadow-xs rounded-3 overflow-hidden">
+            <div class="card-header bg-white border-bottom border-slate-200 py-3 px-4 d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-boxes text-primary"></i>
+                <h6 class="fw-bold text-navy mb-0">Catalog Products</h6>
+              </div>
+              <span class="badge bg-slate-100 text-slate-700 border font-mono small" id="productsCountBadge">Loading...</span>
+            </div>
+
+            <div class="card-body p-0">
+              
+              <!-- Products Table Wrapper -->
+              <div class="table-responsive" id="productsTableWrapper">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light text-slate-600 font-mono small border-bottom border-slate-200">
+                    <tr>
+                      <th scope="col" style="min-width: 200px;">Product Name</th>
+                      <th scope="col" style="min-width: 110px;">Type</th>
+                      <th scope="col" style="min-width: 110px;">Sales Price</th>
+                      <th scope="col" style="min-width: 100px;">Cost Price</th>
+                      <th scope="col" style="min-width: 220px;">Available Variants</th>
+                      <th scope="col" style="min-width: 90px;">Status</th>
+                      <th scope="col" class="text-end" style="min-width: 140px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="productsTableBody">
+                    <!-- Rendered dynamically by products.js -->
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Empty State -->
+              <div class="text-center py-5 d-none" id="productsEmptyState">
+                <div class="avatar-lg bg-slate-100 text-slate-400 rounded-circle mx-auto d-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
+                  <i class="bi bi-box-seam fs-2"></i>
+                </div>
+                <h6 class="fw-semibold text-navy mb-1">No products found</h6>
+                <p class="text-slate-500 small mb-3">Adjust your search/filters or create your first catalog product.</p>
+                <button class="btn btn-primary btn-sm" onclick="products.openAddProductModal()">
+                  <i class="bi bi-plus-lg me-1"></i> Add Product
+                </button>
+              </div>
+
+              <!-- Pagination Container -->
+              <div class="px-4" id="productsPaginationContainer">
+                <!-- Rendered dynamically by products.js -->
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: SUBSCRIPTION PLANS -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade" id="tab-plans" role="tabpanel">
+          <div class="card border-slate-200 shadow-xs rounded-3 overflow-hidden">
+            <div class="card-header bg-white border-bottom border-slate-200 py-3 px-4 d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="fw-bold text-navy mb-0">Subscription Plans</h6>
+                <small class="text-muted">Recurring billing cadence and policy terms for subscriptions</small>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="products.openAddPlanModal()">
+                <i class="bi bi-plus-lg me-1"></i> Add Plan
+              </button>
+            </div>
+
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light text-slate-600 font-mono small border-bottom border-slate-200">
+                    <tr>
+                      <th>Plan Name</th>
+                      <th>Billing Cadence</th>
+                      <th>Base Plan Price</th>
+                      <th>Min Qty</th>
+                      <th>Auto-Close on Expiry</th>
+                      <th>Pause Allowed</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="plansTableBody">
+                    <!-- Rendered dynamically by products.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 3: DISCOUNTS -->
+        <!-- =================================================================== -->
+        <div class="tab-pane fade" id="tab-discounts" role="tabpanel">
+          <div class="card border-slate-200 shadow-xs rounded-3 overflow-hidden">
+            <div class="card-header bg-white border-bottom border-slate-200 py-3 px-4 d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="fw-bold text-navy mb-0">Active Discounts &amp; Coupons</h6>
+                <small class="text-muted">Promotion codes applied to subscription invoices</small>
+              </div>
+              <button class="btn btn-warning btn-sm" onclick="products.openAddDiscountModal()">
+                <i class="bi bi-plus-lg me-1"></i> Add Discount
+              </button>
+            </div>
+
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light text-slate-600 font-mono small border-bottom border-slate-200">
+                    <tr>
+                      <th>Promo Code</th>
+                      <th>Type</th>
+                      <th>Discount Value</th>
+                      <th>Redemptions / Limit</th>
+                      <th>Status</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="discountsTableBody">
+                    <!-- Rendered dynamically by products.js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 1: ADD / EDIT PRODUCT MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-slate-200 shadow-card">
+      <div class="modal-header border-bottom py-3 px-4">
+        <h5 class="modal-title fw-bold text-navy" id="productModalTitle">Add New Product</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <form id="productForm">
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" id="prodIdInput" value="">
+
+          <!-- General Information -->
+          <h6 class="fw-bold text-navy small text-uppercase tracking-wider font-mono mb-3 text-primary">General Information</h6>
+          
+          <div class="row g-3 mb-3">
+            <!-- Product Name -->
+            <div class="col-12 col-md-8">
+              <label for="prodNameInput" class="form-label small fw-semibold text-slate-700">Product Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="prodNameInput" placeholder="e.g. Brightloop ERP Suite" required>
+            </div>
+
+            <!-- Product Type -->
+            <div class="col-12 col-md-4">
+              <label for="prodTypeSelect" class="form-label small fw-semibold text-slate-700">Product Type <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="prodTypeSelect" required>
+                <option value="SOFTWARE">Software</option>
+                <option value="SERVICE">Service</option>
+                <option value="HARDWARE">Hardware</option>
+                <option value="CONSUMABLE">Consumable</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <!-- Base Sales Price -->
+            <div class="col-12 col-md-6">
+              <label for="prodSalesPriceInput" class="form-label small fw-semibold text-slate-700">Base Sales Price ($) <span class="text-danger">*</span></label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white">$</span>
+                <input type="number" step="0.01" min="0" class="form-control" id="prodSalesPriceInput" placeholder="0.00" required>
+              </div>
+              <small class="text-muted" style="font-size: 0.75rem;">Base starting price before variant modifiers.</small>
+            </div>
+
+            <!-- Cost Price -->
+            <div class="col-12 col-md-6">
+              <label for="prodCostPriceInput" class="form-label small fw-semibold text-slate-700">Cost Price ($)</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white">$</span>
+                <input type="number" step="0.01" min="0" class="form-control" id="prodCostPriceInput" placeholder="0.00" value="0.00">
+              </div>
+              <small class="text-muted" style="font-size: 0.75rem;">Internal unit cost for margin tracking.</small>
+            </div>
+          </div>
+
+          <!-- Description / Notes -->
+          <div class="mb-3">
+            <label for="prodNotesInput" class="form-label small fw-semibold text-slate-700">Description / Specifications</label>
+            <textarea class="form-control form-control-sm" id="prodNotesInput" rows="2" placeholder="Optional notes, SLA details or specifications..."></textarea>
+          </div>
+
+          <!-- Active Checkbox -->
+          <div class="form-check form-switch mb-4">
+            <input class="form-check-input" type="checkbox" role="switch" id="prodIsActiveCheck" checked>
+            <label class="form-check-label small fw-semibold text-navy" for="prodIsActiveCheck">Active in Catalog (Available for new quotes &amp; subscriptions)</label>
+          </div>
+
+          <hr class="border-slate-200 my-3">
+
+          <!-- Product Variants (Inline Setup) -->
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div>
+              <h6 class="fw-bold text-navy small text-uppercase tracking-wider font-mono mb-0 text-primary">Configured Variants</h6>
+              <small class="text-muted" style="font-size: 0.75rem;">Add editions or tiers with optional extra prices (e.g. Standard: $0, Odoo: +$560).</small>
+            </div>
+            <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2" id="btnAddInlineVariant">
+              <i class="bi bi-plus me-1"></i> Add Variant Row
+            </button>
+          </div>
+
+          <!-- Inline Variants Container -->
+          <div id="inlineVariantsContainer" class="p-2 bg-light rounded-3 border border-slate-200">
+            <!-- Dynamic variant rows injected by products.js -->
+          </div>
+
+        </div>
+
+        <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm shadow-xs">
+            <i class="bi bi-save me-1"></i> Save Product
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 2: PRODUCT DETAIL MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="productDetailModal" tabindex="-1" aria-labelledby="detailProdName" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-slate-200 shadow-card">
+      <div class="modal-header border-bottom py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <h5 class="modal-title fw-bold text-navy" id="detailProdName">Product Details</h5>
+          <span class="badge bg-slate-100 text-slate-700 font-mono" id="detailProdId">#0</span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body px-4 py-3">
+        <!-- Highlights Row -->
+        <div class="row g-3 mb-4">
+          <div class="col-4">
+            <div class="p-3 bg-light rounded-3 border border-slate-200">
+              <small class="text-muted d-block mb-1">Product Type</small>
+              <div id="detailProdType">-</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-3 bg-light rounded-3 border border-slate-200">
+              <small class="text-muted d-block mb-1">Catalog Status</small>
+              <div id="detailProdStatus">-</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="p-3 bg-light rounded-3 border border-slate-200">
+              <small class="text-muted d-block mb-1">Gross Margin</small>
+              <div class="fw-bold text-success font-mono" id="detailProdMargin">$0.00 (0%)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <small class="text-muted d-block">Base Sales Price</small>
+            <h4 class="fw-bold text-navy font-mono mb-0" id="detailProdSalesPrice">$0.00</h4>
+          </div>
+          <div class="col-6">
+            <small class="text-muted d-block">Cost Price</small>
+            <h4 class="fw-bold text-slate-600 font-mono mb-0" id="detailProdCostPrice">$0.00</h4>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <small class="text-muted d-block mb-1">Description / Notes</small>
+          <div class="p-3 bg-white border rounded-3 small text-slate-700" id="detailProdNotes">
+            No notes provided.
+          </div>
+        </div>
+
+        <!-- Variants Breakdown -->
+        <div class="border rounded-3 overflow-hidden">
+          <div class="bg-light px-3 py-2 border-bottom d-flex align-items-center justify-content-between">
+            <span class="fw-bold text-navy small font-mono">Available Variants &amp; Pricing Breakdown</span>
+            <small class="text-muted">Effective Price = Base + Extra</small>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+              <thead class="table-light text-slate-600 font-mono small">
+                <tr>
+                  <th>Variant / Attribute</th>
+                  <th>Base Price</th>
+                  <th>Extra Price</th>
+                  <th>Effective Price</th>
+                </tr>
+              </thead>
+              <tbody id="detailVariantsTbody">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary btn-sm shadow-xs" id="btnDetailManageVariants">
+          <i class="bi bi-sliders me-1"></i> Manage Variants
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 3: DEDICATED VARIANT MANAGEMENT MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="variantModal" tabindex="-1" aria-labelledby="varModalProductName" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-slate-200 shadow-card">
+      <div class="modal-header border-bottom py-3 px-4">
+        <div>
+          <h5 class="modal-title fw-bold text-navy mb-0">Variant Management</h5>
+          <small class="text-muted">Product: <span class="fw-semibold text-primary" id="varModalProductName"></span> &bull; Base Price: <span class="font-mono fw-bold" id="varModalBasePrice"></span></small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body px-4 py-3">
+        
+        <!-- Existing Variants Table -->
+        <h6 class="fw-bold text-navy small text-uppercase tracking-wider font-mono mb-2 text-primary">Existing Variants</h6>
+        <div class="border rounded-3 overflow-hidden mb-4">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+              <thead class="table-light text-slate-600 font-mono small border-bottom">
+                <tr>
+                  <th>Attribute Name</th>
+                  <th>Attribute Value</th>
+                  <th>Price Extra</th>
+                  <th>Effective Price</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="variantManagerTbody">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Add / Edit Variant Form -->
+        <div class="p-3 bg-light rounded-3 border border-slate-200">
+          <h6 class="fw-bold text-navy small text-uppercase tracking-wider font-mono mb-3" id="varFormTitle">Add New Variant</h6>
+          
+          <form id="variantForm">
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-4">
+                <label for="varAttrNameInput" class="form-label small fw-semibold text-slate-700">Attribute Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm" id="varAttrNameInput" placeholder="e.g. Edition, Tier" value="Edition" required>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label for="varAttrValueInput" class="form-label small fw-semibold text-slate-700">Attribute Value <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm" id="varAttrValueInput" placeholder="e.g. Standard, Odoo, Enterprise" required>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label for="varPriceExtraInput" class="form-label small fw-semibold text-slate-700">Price Extra ($)</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white">+$</span>
+                  <input type="number" step="0.01" min="0" class="form-control" id="varPriceExtraInput" placeholder="0.00" value="0.00">
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between mt-3 pt-2 border-top border-slate-200">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i> Effective unit price will equal base sales price plus extra modifier.
+              </small>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="products.resetVariantForm()">Cancel</button>
+                <button type="submit" class="btn btn-primary btn-sm shadow-xs" id="btnSaveVariant">
+                  <i class="bi bi-save me-1"></i> Add Variant
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      <div class="modal-footer border-top py-2 px-4">
+        <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" data-bs-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 4: DELETE CONFIRMATION MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteProdName" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-slate-200 shadow-card">
+      <div class="modal-header border-bottom py-3 px-4">
+        <h5 class="modal-title fw-bold text-danger">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i> Confirm Deletion
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body px-4 py-3">
+        <p class="text-slate-700 mb-2">Are you sure you want to permanently delete this item?</p>
+        <div class="p-3 bg-danger-subtle border border-danger-subtle rounded-3 mb-3">
+          <div class="fw-bold text-danger" id="deleteProdName">Item Name</div>
+          <small class="text-muted" id="deleteProdId">#0</small>
+        </div>
+      </div>
+      <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm shadow-xs" id="btnConfirmDeleteProduct">
+          <i class="bi bi-trash me-1"></i> Delete Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 5: TAX RULES CONFIGURATION MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="taxRulesModal" tabindex="-1" aria-labelledby="taxRuleFormTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-slate-200 shadow-card">
+      <div class="modal-header border-bottom py-3 px-4">
+        <div>
+          <h5 class="modal-title fw-bold text-navy mb-0">Tax Rules Configuration</h5>
+          <small class="text-muted">Manage percentage tax rates applied to recurring invoice line items.</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body px-4 py-3">
+        <!-- Existing Tax Rules Table -->
+        <h6 class="fw-bold text-navy small text-uppercase tracking-wider font-mono mb-2 text-primary">Active Tax Rules</h6>
+        <div class="border rounded-3 overflow-hidden mb-4">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+              <thead class="table-light text-slate-600 font-mono small border-bottom">
+                <tr>
+                  <th>Rule Name</th>
+                  <th>Tax Rate (%)</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="taxRulesTableBody">
+                <!-- Injected dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Add / Edit Tax Rule Form -->
+        <div class="p-3 bg-light rounded-3 border border-slate-200">
+          <h6 class="fw-bold text-navy small text-uppercase tracking-wider font-mono mb-3" id="taxRuleFormTitle">Add Tax Rule</h6>
+          
+          <form id="taxRuleForm">
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-5">
+                <label for="taxRuleNameInput" class="form-label small fw-semibold text-slate-700">Tax Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm" id="taxRuleNameInput" placeholder="e.g. Standard VAT, Sales Tax" required>
+              </div>
+
+              <div class="col-12 col-md-3">
+                <label for="taxRuleRateInput" class="form-label small fw-semibold text-slate-700">Tax Rate (%) <span class="text-danger">*</span></label>
+                <div class="input-group input-group-sm">
+                  <input type="number" step="0.01" min="0" max="100" class="form-control" id="taxRuleRateInput" placeholder="18.00" required>
+                  <span class="input-group-text bg-white">%</span>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-4">
+                <div class="form-check form-switch mb-1">
+                  <input class="form-check-input" type="checkbox" role="switch" id="taxRuleIsActiveCheck" checked>
+                  <label class="form-check-label small fw-semibold text-navy" for="taxRuleIsActiveCheck">Active Rule</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-end gap-2 mt-3 pt-2 border-top border-slate-200">
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="products.resetTaxRuleForm()">Clear Form</button>
+              <button type="submit" class="btn btn-primary btn-sm shadow-xs" id="btnSaveTaxRule">
+                <i class="bi bi-save me-1"></i> Save Tax Rule
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      <div class="modal-footer border-top py-2 px-4">
+        <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" data-bs-dismiss="modal">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 6: ADD / EDIT PLAN MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="planModal" tabindex="-1" aria-labelledby="planModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-slate-200 shadow-card">
+      <div class="modal-header border-bottom py-3 px-4">
+        <h5 class="modal-title fw-bold text-navy" id="planModalTitle">Add Subscription Plan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="planForm">
+        <div class="modal-body px-4 py-3">
+          <input type="hidden" id="planIdInput" value="">
+
+          <div class="mb-3">
+            <label for="planNameInput" class="form-label small fw-semibold text-slate-700">Plan Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm" id="planNameInput" placeholder="e.g. Monthly Standard, Annual Pro" required>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="planPriceInput" class="form-label small fw-semibold text-slate-700">Base Plan Price ($) <span class="text-danger">*</span></label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white">$</span>
+                <input type="number" step="0.01" min="0" class="form-control" id="planPriceInput" placeholder="0.00" required>
+              </div>
+            </div>
+            <div class="col-6">
+              <label for="planPeriodSelect" class="form-label small fw-semibold text-slate-700">Billing Period <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="planPeriodSelect" required>
+                <option value="MONTHLY">Monthly</option>
+                <option value="YEARLY">Yearly</option>
+                <option value="WEEKLY">Weekly</option>
+                <option value="DAILY">Daily</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="planMinQtyInput" class="form-label small fw-semibold text-slate-700">Minimum Quantity</label>
+            <input type="number" min="1" class="form-control form-control-sm" id="planMinQtyInput" value="1">
+          </div>
+
+          <div class="p-3 bg-light rounded-3 border border-slate-200 mb-2">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" role="switch" id="planAutoCloseCheck">
+              <label class="form-check-label small fw-semibold text-navy" for="planAutoCloseCheck">Auto-Close at Expiration Date</label>
+            </div>
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" role="switch" id="planAllowPauseCheck">
+              <label class="form-check-label small fw-semibold text-navy" for="planAllowPauseCheck">Allow Customers/Staff to Pause</label>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="planAllowRenewCheck" checked>
+              <label class="form-check-label small fw-semibold text-navy" for="planAllowRenewCheck">Allow Renewals</label>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm shadow-xs" id="btnSavePlan">Save Plan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 7: ADD DISCOUNT MODAL -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="discountModal" tabindex="-1" aria-labelledby="discountModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-slate-200 shadow-card">
+      <div class="modal-header border-bottom py-3 px-4">
+        <h5 class="modal-title fw-bold text-navy" id="discountModalTitle">Add Discount Code</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="discountForm">
+        <div class="modal-body px-4 py-3">
+          <div class="mb-3">
+            <label for="discCodeInput" class="form-label small fw-semibold text-slate-700">Promo Code <span class="text-danger">*</span></label>
+            <input type="text" class="form-control form-control-sm font-mono text-uppercase" id="discCodeInput" placeholder="e.g. SUMMER2026" required>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label for="discTypeSelect" class="form-label small fw-semibold text-slate-700">Type <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="discTypeSelect">
+                <option value="PERCENTAGE">Percentage (%)</option>
+                <option value="FIXED">Fixed Amount ($)</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label for="discValueInput" class="form-label small fw-semibold text-slate-700">Discount Value <span class="text-danger">*</span></label>
+              <input type="number" step="0.01" min="0" class="form-control form-control-sm" id="discValueInput" placeholder="10.00" required>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="discMaxUsesInput" class="form-label small fw-semibold text-slate-700">Max Redemptions</label>
+            <input type="number" min="1" class="form-control form-control-sm" id="discMaxUsesInput" placeholder="Unlimited if empty">
+          </div>
+        </div>
+        <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning btn-sm shadow-xs">Save Discount</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Products, Plans & Variant Management JavaScript Controller -->
+<script src="{% static 'js/products.js' %}"></script>
+{% endblock %}

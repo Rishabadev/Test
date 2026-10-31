@@ -293,27 +293,30 @@
         }
 
         // Validate password rules (strictly > 8 chars, upper, lower, special)
+        const passFb = document.getElementById('passwordFeedback');
+        const confirmFb = document.getElementById('confirmPasswordFeedback');
+
         if (password.length <= 8) {
           passwordInput.classList.add('is-invalid');
-          document.getElementById('passwordFeedback').textContent = 'Password must be longer than 8 characters (at least 9).';
+          if (passFb) passFb.textContent = 'Password must be longer than 8 characters (at least 9).';
           hasError = true;
         } else if (!/[A-Z]/.test(password)) {
           passwordInput.classList.add('is-invalid');
-          document.getElementById('passwordFeedback').textContent = 'Password must contain at least one uppercase letter (A-Z).';
+          if (passFb) passFb.textContent = 'Password must contain at least one uppercase letter (A-Z).';
           hasError = true;
         } else if (!/[a-z]/.test(password)) {
           passwordInput.classList.add('is-invalid');
-          document.getElementById('passwordFeedback').textContent = 'Password must contain at least one lowercase letter (a-z).';
+          if (passFb) passFb.textContent = 'Password must contain at least one lowercase letter (a-z).';
           hasError = true;
         } else if (!/[^A-Za-z0-9]/.test(password)) {
           passwordInput.classList.add('is-invalid');
-          document.getElementById('passwordFeedback').textContent = 'Password must contain at least one special character (!, @, #, $, etc.).';
+          if (passFb) passFb.textContent = 'Password must contain at least one special character (!, @, #, $, etc.).';
           hasError = true;
         }
 
         if (password !== confirmPassword) {
           confirmInput.classList.add('is-invalid');
-          document.getElementById('confirmPasswordFeedback').textContent = 'Passwords do not match.';
+          if (confirmFb) confirmFb.textContent = 'Passwords do not match.';
           hasError = true;
         }
 

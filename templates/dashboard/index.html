@@ -1,118 +1,792 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Dashboard | Brightloop Software{% endblock %}
+{% block title %}Finance & Operations Dashboard | Brightloop Software{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+<style>
+  /* Hide global base.html navbar and footer for full dashboard experience */
+  body > .page-wrapper > header.navbar,
+  body > .page-wrapper > footer {
+    display: none !important;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4 my-auto">
-  <div class="row justify-content-center">
-    <div class="col-lg-10">
+<div class="dashboard-wrapper" id="dashWrapper">
 
-      <!-- Welcome Banner -->
-      <div class="bg-white rounded-card border border-slate-200 shadow-sm p-4 p-md-5 mb-4">
-        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
-          <div>
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <span class="badge bg-primary text-white font-mono px-2 py-1" id="userRoleBadge">STAFF / ADMIN</span>
-              <span class="text-muted small" id="userEmailText">Loading...</span>
+  <!-- Mobile Backdrop -->
+  <div class="sidebar-backdrop" id="dashSidebarBackdrop"></div>
+
+  <!-- Sidebar -->
+  <aside class="dashboard-sidebar" id="dashSidebar">
+    
+    <!-- Sidebar Header -->
+    <div class="dashboard-sidebar-header">
+      <a class="navbar-brand d-flex align-items-center gap-2 text-decoration-none text-white" href="/dashboard/">
+        <div class="brand-icon-box bg-primary text-white rounded-3 d-flex align-items-center justify-content-center">
+          <i class="bi bi-layers-fill fs-5"></i>
+        </div>
+        <div>
+          <span class="fw-bold tracking-tight text-white fs-5 brand-title">Brightloop</span>
+          <span class="badge font-mono ms-1" style="font-size: 0.65rem;" id="dashSidebarRoleBadge">STAFF</span>
+        </div>
+      </a>
+      <button class="btn btn-sm btn-link text-white-50 d-lg-none" id="dashSidebarCloseBtn" aria-label="Close Sidebar">
+        <i class="bi bi-x-lg fs-5"></i>
+      </button>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <nav class="dashboard-sidebar-nav">
+      
+      <!-- Core Module -->
+      <div class="nav-section-title">Core</div>
+      <a href="/dashboard/" class="dash-nav-item active" id="navDashboard">
+        <i class="bi bi-grid-1x2-fill"></i>
+        <span class="nav-text">Dashboard</span>
+      </a>
+
+      <!-- Billing & Operations -->
+      <div class="nav-section-title">Operations</div>
+      <a href="#subscriptionsSection" class="dash-nav-item" id="navSubscriptions">
+        <i class="bi bi-arrow-repeat"></i>
+        <span class="nav-text">Subscriptions</span>
+      </a>
+      <a href="#invoicesSection" class="dash-nav-item" id="navInvoices">
+        <i class="bi bi-receipt-cutoff"></i>
+        <span class="nav-text">Invoices &amp; Payments</span>
+      </a>
+
+      <!-- Admin-Only Section (Hidden from STAFF) -->
+      <div class="nav-section-title" id="sectionAdminHeader">Administration</div>
+      <a href="/products/" class="dash-nav-item" id="navProducts">
+        <i class="bi bi-box-seam-fill"></i>
+        <span class="nav-text">Products &amp; Plans</span>
+        <span class="dash-nav-badge bg-danger text-white">Admin</span>
+      </a>
+      <a href="/products/#tab-plans" class="dash-nav-item" id="navPlans">
+        <i class="bi bi-calendar3-range-fill"></i>
+        <span class="nav-text">Plans</span>
+        <span class="dash-nav-badge bg-danger text-white">Admin</span>
+      </a>
+      <a href="/products/#tab-discounts" class="dash-nav-item" id="navDiscounts">
+        <i class="bi bi-percent"></i>
+        <span class="nav-text">Discounts</span>
+        <span class="dash-nav-badge bg-danger text-white">Admin</span>
+      </a>
+    </nav>
+
+    <!-- Sidebar Footer / Logout -->
+    <div class="dashboard-sidebar-footer">
+      <a href="javascript:void(0)" class="dash-nav-item text-danger mb-0" id="navLogout" onclick="auth.logout()">
+        <i class="bi bi-box-arrow-right text-danger"></i>
+        <span class="nav-text">Sign Out</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content Column -->
+  <div class="dashboard-main">
+    
+    <!-- Top Navigation Bar -->
+    <header class="dashboard-topbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-outline-secondary btn-sm" id="dashSidebarToggle" aria-label="Toggle navigation" title="Toggle sidebar">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">Operations</span>
+          <span class="text-slate-300">/</span>
+          <span class="fw-semibold text-navy small">Finance &amp; Subscriptions Workspace</span>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+        
+        <!-- Refresh Button -->
+        <button class="btn btn-light btn-sm border text-slate-600 shadow-xs" id="btnRefreshDashboard" title="Refresh dashboard data">
+          <i class="bi bi-arrow-clockwise me-1"></i>
+          <span class="d-none d-sm-inline">Refresh</span>
+        </button>
+
+        <!-- User Profile Dropdown -->
+        <div class="dropdown">
+          <button class="btn btn-light btn-sm border d-flex align-items-center gap-2 px-2 shadow-xs dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="avatar-sm bg-navy-gradient text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 28px; height: 28px; font-size: 0.75rem;" id="dashTopUserAvatar">
+              S
             </div>
-            <h2 class="fw-bold text-navy tracking-tight mb-1" id="welcomeHeading">Welcome to Brightloop Dashboard</h2>
-            <p class="text-slate-500 mb-0">Finance dashboard overview and subscription management console.</p>
+            <div class="d-none d-md-inline text-start">
+              <span class="fw-medium text-navy small d-block leading-tight" id="dashTopUserName">Staff Member</span>
+            </div>
+            <span class="badge ms-1 font-mono" id="dashTopRoleBadge">STAFF</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-card border-slate-200 mt-1">
+            <li class="px-3 py-2 border-bottom">
+              <div class="fw-semibold text-navy small" id="dashTopUserEmail">staff@brightloop.io</div>
+              <small class="text-muted">Operations Console</small>
+            </li>
+            <li>
+              <a class="dropdown-item small py-2" href="#filtersSection">
+                <i class="bi bi-funnel me-2"></i> Date Filters
+              </a>
+            </li>
+            <li><hr class="dropdown-divider my-1"></li>
+            <li>
+              <a class="dropdown-item small py-2 text-danger" href="javascript:void(0)" onclick="auth.logout()">
+                <i class="bi bi-box-arrow-right me-2"></i> Sign Out
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Body Content -->
+    <main class="dashboard-body">
+
+      <!-- ================================================================== -->
+      <!-- SECTION 1: PROMINENT STATISTIC CARDS -->
+      <!-- ================================================================== -->
+      <div class="row g-3 mb-4">
+        
+        <!-- Card 1: Active Subscriptions -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-blue-subtle text-primary">
+              <i class="bi bi-arrow-repeat"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Active Subscriptions</span>
+              <h3 class="stat-value text-navy" id="statActiveSubs">--</h3>
+              <span class="stat-badge text-primary bg-primary-subtle" id="badgeActiveSubs">
+                <i class="bi bi-check-circle me-1"></i> Recurring orders
+              </span>
+            </div>
           </div>
-          <div>
-            <button class="btn btn-outline-danger btn-sm px-3 fw-medium" onclick="auth.logout()">
-              <i class="bi bi-box-arrow-right me-1"></i> Sign Out
+        </div>
+
+        <!-- Card 2: Total Revenue -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-success-subtle text-success">
+              <i class="bi bi-cash-stack"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Total Settled Revenue</span>
+              <h3 class="stat-value text-success" id="statRevenue">$--</h3>
+              <span class="stat-badge text-success bg-success-subtle" id="badgeRevenue">
+                <i class="bi bi-graph-up-arrow me-1"></i> Sum of payments
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 3: Outstanding Amount -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-warning-subtle text-warning">
+              <i class="bi bi-exclamation-circle"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Outstanding Balance</span>
+              <h3 class="stat-value text-navy" id="statOutstanding">$--</h3>
+              <span class="stat-badge text-warning bg-warning-subtle" id="badgeOutstanding">
+                <i class="bi bi-hourglass-split me-1"></i> Awaiting settlement
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 4: Overdue Invoices -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="stat-card">
+            <div class="stat-icon-wrapper bg-danger-subtle text-danger">
+              <i class="bi bi-clock-history"></i>
+            </div>
+            <div class="stat-content">
+              <span class="stat-label">Overdue Invoices</span>
+              <h3 class="stat-value text-danger" id="statOverdueCount">--</h3>
+              <span class="stat-badge text-danger bg-danger-subtle" id="badgeOverdueAmount">
+                <i class="bi bi-shield-exclamation me-1"></i> $-- at risk
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- SECTION 2: FILTERS COMPONENT -->
+      <!-- ================================================================== -->
+      <div class="filter-card mb-4" id="filtersSection">
+        <form id="dashFilterForm">
+          <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-funnel-fill text-primary fs-5"></i>
+              <span class="fw-bold text-navy small">Global Filters:</span>
+            </div>
+
+            <div class="row g-2 flex-grow-1 align-items-center justify-content-lg-end">
+              <!-- Start Date -->
+              <div class="col-sm-6 col-lg-3">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white border-end-0 text-muted small">From</span>
+                  <input type="date" class="form-control border-start-0" id="filterStartDate">
+                </div>
+              </div>
+
+              <!-- End Date -->
+              <div class="col-sm-6 col-lg-3">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white border-end-0 text-muted small">To</span>
+                  <input type="date" class="form-control border-start-0" id="filterEndDate">
+                </div>
+              </div>
+
+              <!-- Status Dropdown -->
+              <div class="col-sm-6 col-lg-2">
+                <select class="form-select form-select-sm" id="filterStatus">
+                  <option value="ALL">All Statuses</option>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="CONFIRMED">CONFIRMED</option>
+                  <option value="PAID">PAID</option>
+                  <option value="DRAFT">DRAFT</option>
+                  <option value="PAUSED">PAUSED</option>
+                  <option value="CLOSED">CLOSED</option>
+                </select>
+              </div>
+
+              <!-- Customer Search -->
+              <div class="col-sm-6 col-lg-2">
+                <input type="text" class="form-control form-control-sm" placeholder="Customer email / ID" id="filterCustomer">
+              </div>
+
+              <!-- Filter Buttons -->
+              <div class="col-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm px-3 shadow-xs">
+                  <i class="bi bi-filter me-1"></i> Apply
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm px-3" id="btnResetFilters">
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- SECTION 3: SUBSCRIPTIONS MANAGEMENT (MVP REQUIREMENT 2) -->
+      <!-- ================================================================== -->
+      <div class="card border-slate-200 rounded-card shadow-xs mb-4" id="subscriptionsSection">
+        <div class="card-header bg-white border-bottom border-slate-200 py-3 px-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+          <div class="d-flex align-items-center gap-2">
+            <div class="stat-icon bg-blue-subtle text-primary" style="width: 32px; height: 32px; font-size: 1rem;">
+              <i class="bi bi-arrow-repeat"></i>
+            </div>
+            <div>
+              <h5 class="fw-bold text-navy mb-0">Subscriptions Management</h5>
+              <small class="text-muted">Lifecycle transitions, recurring cadence, and active contracts</small>
+            </div>
+            <span class="badge bg-primary text-white font-mono small ms-2" id="subsCountBadge">Loading...</span>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <!-- Status Filter -->
+            <select class="form-select form-select-sm" id="subStatusFilter" style="width: 140px;">
+              <option value="ALL">All Statuses</option>
+              <option value="DRAFT">Draft</option>
+              <option value="CONFIRMED">Confirmed</option>
+              <option value="ACTIVE">Active</option>
+              <option value="PAUSED">Paused</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+
+            <!-- Search -->
+            <input type="text" class="form-control form-control-sm" id="subSearchInput" placeholder="Search sub # or user..." style="width: 180px;">
+
+            <!-- Create Subscription Button -->
+            <button class="btn btn-primary btn-sm shadow-xs text-nowrap" onclick="dashboard.openCreateSubscriptionModal()">
+              <i class="bi bi-plus-lg me-1"></i> Create Subscription
             </button>
           </div>
         </div>
+
+        <div class="table-responsive">
+          <table class="table table-portal mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Subscription #</th>
+                <th>Customer</th>
+                <th>Plan &amp; Cadence</th>
+                <th>Amount</th>
+                <th>Start Date</th>
+                <th>Next Billing</th>
+                <th>Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="subscriptionsTableBody">
+              <tr>
+                <td colspan="8" class="text-center py-4">
+                  <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="subscriptionsPaginationContainer" class="px-4"></div>
       </div>
 
-      <!-- Live KPI Cards Preview (Driven by /api/dashboard/) -->
-      <div class="row g-3 mb-4" id="dashboardMetricsRow">
-        <div class="col-sm-6 col-lg-3">
-          <div class="bg-white rounded-3 border border-slate-200 p-3 shadow-xs">
-            <span class="text-muted small fw-medium">Active Subscriptions</span>
-            <h3 class="fw-bold text-navy mt-1 mb-0" id="metricActiveSubs">--</h3>
+      <!-- ================================================================== -->
+      <!-- SECTION 4: UNIFIED INVOICES & PAYMENTS (MVP REQUIREMENT 3) -->
+      <!-- ================================================================== -->
+      <div class="card border-slate-200 rounded-card shadow-xs mb-4" id="invoicesSection">
+        <div class="card-header bg-white border-bottom border-slate-200 py-3 px-4">
+          <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div class="d-flex align-items-center gap-2">
+              <div class="stat-icon bg-success-subtle text-success" style="width: 32px; height: 32px; font-size: 1rem;">
+                <i class="bi bi-receipt"></i>
+              </div>
+              <div>
+                <h5 class="fw-bold text-navy mb-0">Invoices &amp; Payments Hub</h5>
+                <small class="text-muted">Manage recurring billing, confirm invoices, record settlements &amp; collections</small>
+              </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2">
+              <input type="text" class="form-control form-control-sm" id="invoiceSearchInput" placeholder="Search invoice #..." style="width: 180px;">
+            </div>
+          </div>
+
+          <!-- Tabs for Invoices Hub -->
+          <ul class="nav nav-tabs card-header-tabs" id="invoicesHubTab" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active fw-semibold" id="tab-all-inv-btn" data-bs-toggle="tab" data-bs-target="#tab-all-invoices" type="button">
+                <i class="bi bi-receipt-cutoff me-1"></i> All Invoices (<span id="countAllInvoicesBadge">0</span>)
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link fw-semibold text-danger" id="tab-overdue-inv-btn" data-bs-toggle="tab" data-bs-target="#tab-overdue-invoices" type="button">
+                <i class="bi bi-clock-history me-1"></i> Overdue Invoices (<span id="countOverdueBadge">0</span>)
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link fw-semibold text-success" id="tab-payments-btn" data-bs-toggle="tab" data-bs-target="#tab-payments-log" type="button">
+                <i class="bi bi-cash-coin me-1"></i> Recorded Payments (<span id="countPaymentsBadge">0</span>)
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="tab-content">
+          
+          <!-- TAB 1: ALL INVOICES -->
+          <div class="tab-pane fade show active" id="tab-all-invoices" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-portal mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th>Invoice #</th>
+                    <th>Customer</th>
+                    <th>Issue Date</th>
+                    <th>Due Date</th>
+                    <th>Total</th>
+                    <th>Paid</th>
+                    <th>Balance Due</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="allInvoicesTableBody">
+                  <tr>
+                    <td colspan="9" class="text-center py-4">
+                      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="allInvoicesPaginationContainer" class="px-4"></div>
+          </div>
+
+          <!-- TAB 2: OVERDUE INVOICES -->
+          <div class="tab-pane fade" id="tab-overdue-invoices" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-portal mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th>Invoice #</th>
+                    <th>Customer</th>
+                    <th>Issue Date</th>
+                    <th>Due Date</th>
+                    <th>Total Amount</th>
+                    <th>Amount Due</th>
+                    <th>Days Overdue</th>
+                    <th class="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="overdueTableBody">
+                  <tr>
+                    <td colspan="8" class="text-center py-4">
+                      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="overduePaginationContainer" class="px-4"></div>
+          </div>
+
+          <!-- TAB 3: RECORDED PAYMENTS -->
+          <div class="tab-pane fade" id="tab-payments-log" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-portal mb-0 align-middle">
+                <thead>
+                  <tr>
+                    <th>Payment ID</th>
+                    <th>Invoice #</th>
+                    <th>Customer</th>
+                    <th>Payment Method</th>
+                    <th>Amount</th>
+                    <th>Payment Date</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="paymentsTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center py-4">
+                      <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="paymentsPaginationContainer" class="px-4"></div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- MODAL 1: INVOICE STATEMENT DETAILS -->
+<!-- ================================================================== -->
+<div class="modal fade" id="dashInvoiceDetailModal" tabindex="-1" aria-labelledby="dashInvModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-bottom py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-receipt-cutoff text-primary fs-5"></i>
+          <h5 class="modal-title fw-bold text-navy font-mono mb-0" id="dashModalInvNumber">INV-2026-XXXX</h5>
+          <span id="dashModalInvStatus"></span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="row g-3 p-3 bg-light rounded-3 border border-slate-200 mb-4">
+          <div class="col-sm-6 col-md-4">
+            <span class="text-muted small">Customer</span>
+            <div class="fw-semibold text-navy text-truncate" id="dashModalInvCustName">--</div>
+            <div class="text-muted font-mono small text-truncate" id="dashModalInvCustEmail">--</div>
+          </div>
+          <div class="col-sm-6 col-md-4">
+            <span class="text-muted small">Dates</span>
+            <div class="fw-semibold text-slate-700">Issued: <span id="dashModalInvIssueDate">--</span></div>
+            <div class="text-slate-600 small">Due: <span id="dashModalInvDueDate">--</span></div>
+          </div>
+          <div class="col-sm-6 col-md-4">
+            <span class="text-muted small">Linked Subscription</span>
+            <div class="fw-semibold text-navy font-mono small" id="dashModalInvSubNumber">--</div>
           </div>
         </div>
-        <div class="col-sm-6 col-lg-3">
-          <div class="bg-white rounded-3 border border-slate-200 p-3 shadow-xs">
-            <span class="text-muted small fw-medium">Total Revenue</span>
-            <h3 class="fw-bold text-success mt-1 mb-0" id="metricTotalRevenue">--</h3>
-          </div>
+
+        <h6 class="fw-bold text-navy mb-2">Billed Line Items</h6>
+        <div class="table-responsive border rounded-3 mb-4">
+          <table class="table table-portal mb-0">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th class="text-center">Qty</th>
+                <th>Unit Price</th>
+                <th>Subtotal</th>
+                <th>Tax</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody id="dashModalInvLinesTbody"></tbody>
+          </table>
         </div>
-        <div class="col-sm-6 col-lg-3">
-          <div class="bg-white rounded-3 border border-slate-200 p-3 shadow-xs">
-            <span class="text-muted small fw-medium">Outstanding Balance</span>
-            <h3 class="fw-bold text-warning mt-1 mb-0" id="metricOutstanding">--</h3>
-          </div>
-        </div>
-        <div class="col-sm-6 col-lg-3">
-          <div class="bg-white rounded-3 border border-slate-200 p-3 shadow-xs">
-            <span class="text-muted small fw-medium">Overdue Invoices</span>
-            <h3 class="fw-bold text-danger mt-1 mb-0" id="metricOverdueCount">--</h3>
+
+        <div class="row justify-content-end mb-2">
+          <div class="col-md-6 col-lg-5">
+            <div class="bg-light p-3 rounded-3 border">
+              <div class="d-flex justify-content-between mb-1 small text-slate-600">
+                <span>Subtotal:</span>
+                <span class="fw-medium font-mono" id="dashModalInvSubtotal">$0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1 small text-slate-600">
+                <span>Tax Amount:</span>
+                <span class="fw-medium font-mono" id="dashModalInvTax">$0.00</span>
+              </div>
+              <hr class="my-2 border-slate-300">
+              <div class="d-flex justify-content-between mb-1 fw-bold text-navy">
+                <span>Grand Total:</span>
+                <span class="font-mono fs-6" id="dashModalInvGrandTotal">$0.00</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1 small text-success">
+                <span>Amount Settled:</span>
+                <span class="font-mono" id="dashModalInvPaid">$0.00</span>
+              </div>
+              <div class="d-flex justify-content-between pt-1 fw-bold text-danger border-top">
+                <span>Remaining Balance:</span>
+                <span class="font-mono fs-6" id="dashModalInvDue">$0.00</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Quick Action / Status Card -->
-      <div class="bg-white rounded-card border border-slate-200 p-4">
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <i class="bi bi-check-circle-fill text-success fs-5"></i>
-          <h5 class="fw-bold text-navy mb-0">Authentication & Role Routing Verified</h5>
+      <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+        <div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
         </div>
-        <p class="text-slate-600 small mb-0">
-          You are authenticated with valid SimpleJWT tokens. The backend endpoints under 
-          <code class="bg-light px-2 py-1 rounded">/api/dashboard/</code> are accessible.
-        </p>
+        <div class="d-flex gap-2" id="dashModalActionGroup">
+          <button type="button" class="btn btn-outline-success btn-sm d-none" id="dashBtnModalConfirm">
+            <i class="bi bi-check-circle me-1"></i> Confirm Invoice
+          </button>
+          <button type="button" class="btn btn-success btn-sm d-none" id="dashBtnModalPay">
+            <i class="bi bi-cash-stack me-1"></i> Record Payment
+          </button>
+          <button type="button" class="btn btn-outline-danger btn-sm d-none" id="dashBtnModalCancel">
+            <i class="bi bi-x-circle me-1"></i> Cancel Invoice
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="dashBtnModalPrint">
+            <i class="bi bi-printer me-1"></i> Print
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="dashBtnModalDownloadPdf">
+            <i class="bi bi-download me-1"></i> PDF
+          </button>
+        </div>
       </div>
-
     </div>
   </div>
 </div>
+
+<!-- ================================================================== -->
+<!-- MODAL 2: RECORD PAYMENT MODAL -->
+<!-- ================================================================== -->
+<div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-labelledby="payModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-bottom py-3 px-4">
+        <h5 class="modal-title fw-bold text-navy" id="payModalTitle">Record Customer Payment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="recordPaymentForm">
+        <div class="modal-body p-4">
+          <input type="hidden" id="payInvoiceId" value="">
+
+          <div class="p-3 bg-light rounded-3 border mb-3">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Invoice:</span>
+              <span class="fw-bold text-navy font-mono" id="payModalInvNumber">INV-2026-XXXX</span>
+            </div>
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>Customer:</span>
+              <span class="fw-semibold text-slate-800" id="payModalCustomer">User</span>
+            </div>
+            <div class="d-flex justify-content-between small pt-1 border-top">
+              <span>Outstanding Due:</span>
+              <span class="fw-bold text-danger font-mono" id="payModalAmountDue">$0.00</span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="payAmountInput" class="form-label small fw-semibold text-slate-700">Payment Amount ($) <span class="text-danger">*</span></label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white">$</span>
+              <input type="number" step="0.01" min="0.01" class="form-control" id="payAmountInput" required>
+            </div>
+            <small class="text-muted" style="font-size: 0.75rem;">Supports partial or full settlement. Overpayments will be rejected.</small>
+          </div>
+
+          <div class="mb-3">
+            <label for="payMethodSelect" class="form-label small fw-semibold text-slate-700">Payment Method <span class="text-danger">*</span></label>
+            <select class="form-select form-select-sm" id="payMethodSelect" required>
+              <option value="BANK_TRANSFER">Bank Transfer</option>
+              <option value="CREDIT_CARD">Credit Card</option>
+              <option value="CASH">Cash</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+
+          <div class="mb-2">
+            <label for="payNotesInput" class="form-label small fw-semibold text-slate-700">Transaction Reference / Notes</label>
+            <input type="text" class="form-control form-control-sm" id="payNotesInput" placeholder="e.g. Wire confirmation ref #10848">
+          </div>
+        </div>
+
+        <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success btn-sm shadow-xs">
+            <i class="bi bi-check2-circle me-1"></i> Record Settlement
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- MODAL 3: CREATE SUBSCRIPTION MODAL -->
+<!-- ================================================================== -->
+<div class="modal fade" id="createSubscriptionModal" tabindex="-1" aria-labelledby="createSubModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-bottom py-3 px-4">
+        <h5 class="modal-title fw-bold text-navy" id="createSubModalTitle">Create Customer Subscription</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="createSubscriptionForm">
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              <label for="subCustomerSelect" class="form-label small fw-semibold text-slate-700">Customer <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="subCustomerSelect" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="subPlanSelect" class="form-label small fw-semibold text-slate-700">Billing Plan <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="subPlanSelect" required>
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+              <label for="subStartDate" class="form-label small fw-semibold text-slate-700">Start Date</label>
+              <input type="date" class="form-control form-control-sm" id="subStartDate">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="subExpiryDate" class="form-label small fw-semibold text-slate-700">Expiry Date (Optional)</label>
+              <input type="date" class="form-control form-control-sm" id="subExpiryDate">
+            </div>
+            <div class="col-12 col-md-4">
+              <label for="subPaymentTerms" class="form-label small fw-semibold text-slate-700">Payment Terms (Days)</label>
+              <input type="number" class="form-control form-control-sm" id="subPaymentTerms" value="30">
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <h6 class="fw-bold text-navy mb-0 small text-uppercase font-mono">Subscription Line Items</h6>
+            <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2" id="btnAddSubLine">
+              <i class="bi bi-plus me-1"></i> Add Line Item
+            </button>
+          </div>
+
+          <div id="subLinesContainer" class="p-2 bg-light rounded-3 border mb-3">
+            <!-- Dynamic lines injected -->
+          </div>
+
+          <div class="alert alert-info py-2 px-3 small border-0 mb-0">
+            <i class="bi bi-info-circle me-1"></i> Subscriptions are created in <strong>DRAFT</strong> state. Use the transition action to confirm and activate recurring billing.
+          </div>
+        </div>
+
+        <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm shadow-xs">
+            <i class="bi bi-check-lg me-1"></i> Create Subscription
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================== -->
+<!-- MODAL 4: SUBSCRIPTION DETAILS & TRANSITIONS MODAL -->
+<!-- ================================================================== -->
+<div class="modal fade" id="subscriptionDetailModal" tabindex="-1" aria-labelledby="subDetailModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-bottom py-3 px-4">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-arrow-repeat text-primary fs-5"></i>
+          <h5 class="modal-title fw-bold text-navy font-mono mb-0" id="subDetailNumber">SUB-2026-XXXX</h5>
+          <span id="subDetailStatusBadge"></span>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="row g-3 p-3 bg-light rounded-3 border border-slate-200 mb-4">
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Customer</span>
+            <div class="fw-semibold text-navy text-truncate" id="subDetailCustomer">--</div>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Plan</span>
+            <div class="fw-semibold text-slate-800" id="subDetailPlan">--</div>
+            <small class="text-muted font-mono" id="subDetailCadence">--</small>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Start Date</span>
+            <div class="fw-semibold text-slate-800" id="subDetailStart">--</div>
+          </div>
+          <div class="col-sm-6 col-md-3">
+            <span class="text-muted small">Next Billing Date</span>
+            <div class="fw-bold text-primary font-mono" id="subDetailNextBill">--</div>
+          </div>
+        </div>
+
+        <h6 class="fw-bold text-navy mb-2">Contract Line Items</h6>
+        <div class="table-responsive border rounded-3 mb-4">
+          <table class="table table-portal mb-0">
+            <thead>
+              <tr>
+                <th>Product &amp; Variant</th>
+                <th class="text-center">Qty</th>
+                <th>Unit Price</th>
+                <th class="text-end">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="subDetailLinesTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="d-flex justify-content-end">
+          <div class="p-3 bg-light border rounded-3 text-end" style="min-width: 200px;">
+            <span class="text-muted small d-block">Period Total Amount</span>
+            <h4 class="fw-bold text-navy font-mono mb-0" id="subDetailTotal">$0.00</h4>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer border-top py-2 px-4 d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <div class="d-flex gap-2" id="subDetailActionGroup">
+          <!-- Dynamic transition action buttons injected based on current status -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
-<script>
-  document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Guard route: redirect if not authenticated
-    if (!window.api.isAuthenticated()) {
-      window.location.href = '/login/?expired=1';
-      return;
-    }
-
-    try {
-      window.api.showLoading('Loading workspace...');
-      const me = await window.api.get('/api/auth/me/');
-      
-      const role = (me.role || '').toUpperCase();
-      if (role === 'CUSTOMER') {
-        window.location.href = '/portal/';
-        return;
-      }
-
-      document.getElementById('userRoleBadge').textContent = role;
-      document.getElementById('userEmailText').textContent = me.email;
-      document.getElementById('welcomeHeading').textContent = `Welcome, ${me.first_name || me.email}!`;
-
-      // Fetch live dashboard KPIs
-      try {
-        const stats = await window.api.get('/api/dashboard/');
-        document.getElementById('metricActiveSubs').textContent = Number(stats.active_subscription_count).toLocaleString();
-        document.getElementById('metricTotalRevenue').textContent = `$${Number(stats.total_revenue).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-        document.getElementById('metricOutstanding').textContent = `$${Number(stats.total_outstanding_amount).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
-        document.getElementById('metricOverdueCount').textContent = `${stats.overdue_invoices_count} ($${Number(stats.overdue_amount).toLocaleString(undefined, {minimumFractionDigits: 2})})`;
-      } catch (kpiErr) {
-        console.warn('Could not load KPIs:', kpiErr);
-      }
-
-    } catch (err) {
-      console.error(err);
-      window.api.onSessionExpired();
-    } finally {
-      window.api.hideLoading();
-    }
-  });
-</script>
+<!-- Dashboard JavaScript Controller -->
+<script src="{% static 'js/dashboard.js' %}"></script>
 {% endblock %}
-

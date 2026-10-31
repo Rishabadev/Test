@@ -8,6 +8,22 @@
 (function () {
   'use strict';
 
+  // Defensive DOM helper functions
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val !== null && val !== undefined ? val : '';
+  };
+
+  const setHtml = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = val !== null && val !== undefined ? val : '';
+  };
+
+  const setVal = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.value = val !== null && val !== undefined ? val : '';
+  };
+
   const portal = {
     // Portal Application State
     state: {
@@ -284,10 +300,10 @@
         }
       });
 
-      document.getElementById('kpiTotalSubs').textContent = totalSubs;
-      document.getElementById('kpiActiveSubs').textContent = activeSubs;
-      document.getElementById('kpiPendingSubs').textContent = pendingSubs;
-      document.getElementById('kpiOutstanding').textContent = this.formatCurrency(outstanding);
+      setText('kpiTotalSubs', totalSubs);
+      setText('kpiActiveSubs', activeSubs);
+      setText('kpiPendingSubs', pendingSubs);
+      setText('kpiOutstanding', this.formatCurrency(outstanding));
 
       // Warning color if outstanding balance > 0
       const outCard = document.getElementById('kpiOutstandingCard');
@@ -588,14 +604,14 @@
         window.api.showLoading('Loading subscription details...');
         const sub = await window.api.get(`/api/subscriptions/${subId}/`);
 
-        document.getElementById('modalSubNumber').textContent = sub.subscription_number;
-        document.getElementById('modalSubStatus').innerHTML = this.formatStatusBadge(sub.status);
-        document.getElementById('modalSubPlan').textContent = sub.plan_name || 'Standard Tier';
-        document.getElementById('modalSubFrequency').textContent = (sub.plan_billing_period || 'Monthly');
-        document.getElementById('modalSubStartDate').textContent = this.formatDate(sub.start_date);
-        document.getElementById('modalSubExpiryDate').textContent = sub.expiry_date ? this.formatDate(sub.expiry_date) : 'Ongoing';
-        document.getElementById('modalSubNextBilling').textContent = sub.next_billing_date ? this.formatDate(sub.next_billing_date) : 'N/A';
-        document.getElementById('modalSubTerms').textContent = `${sub.payment_terms_days || 30} days`;
+        setText('modalSubNumber', sub.subscription_number);
+        setHtml('modalSubStatus', this.formatStatusBadge(sub.status));
+        setText('modalSubPlan', sub.plan_name || 'Standard Tier');
+        setText('modalSubFrequency', (sub.plan_billing_period || 'Monthly'));
+        setText('modalSubStartDate', this.formatDate(sub.start_date));
+        setText('modalSubExpiryDate', sub.expiry_date ? this.formatDate(sub.expiry_date) : 'Ongoing');
+        setText('modalSubNextBilling', sub.next_billing_date ? this.formatDate(sub.next_billing_date) : 'N/A');
+        setText('modalSubTerms', `${sub.payment_terms_days || 30} days`);
 
         // Render Lines
         const linesTbody = document.getElementById('modalSubLinesTbody');
@@ -621,7 +637,7 @@
 
         // Total
         const total = sub.total_amount ? parseFloat(sub.total_amount) : (sub.plan_price ? parseFloat(sub.plan_price) : 0);
-        document.getElementById('modalSubTotal').textContent = this.formatCurrency(total);
+        setText('modalSubTotal', this.formatCurrency(total));
 
         // Show Modal
         const modalEl = document.getElementById('subscriptionDetailModal');
@@ -647,18 +663,18 @@
         window.api.showLoading('Loading invoice statement...');
         const inv = await window.api.get(`/api/invoices/${invId}/`);
 
-        document.getElementById('modalInvNumber').textContent = inv.invoice_number;
-        document.getElementById('modalInvStatus').innerHTML = this.formatStatusBadge(inv.status, inv.is_overdue);
+        setText('modalInvNumber', inv.invoice_number);
+        setHtml('modalInvStatus', this.formatStatusBadge(inv.status, inv.is_overdue));
 
         // Customer details
-        document.getElementById('modalInvCustName').textContent = inv.customer_name || 'Valued Customer';
-        document.getElementById('modalInvCustEmail').textContent = inv.customer_email || '';
+        setText('modalInvCustName', inv.customer_name || 'Valued Customer');
+        setText('modalInvCustEmail', inv.customer_email || '');
 
         // Dates
-        document.getElementById('modalInvIssueDate').textContent = this.formatDate(inv.issue_date);
-        document.getElementById('modalInvDueDate').textContent = this.formatDate(inv.due_date);
-        document.getElementById('modalInvPeriod').textContent = `${this.formatDate(inv.billing_period_start)} - ${this.formatDate(inv.billing_period_end)}`;
-        document.getElementById('modalInvSubNumber').textContent = inv.subscription_number || 'Direct Order';
+        setText('modalInvIssueDate', this.formatDate(inv.issue_date));
+        setText('modalInvDueDate', this.formatDate(inv.due_date));
+        setText('modalInvPeriod', `${this.formatDate(inv.billing_period_start)} - ${this.formatDate(inv.billing_period_end)}`);
+        setText('modalInvSubNumber', inv.subscription_number || 'Direct Order');
 
         // Overdue Alert Banner
         const overdueAlert = document.getElementById('modalInvOverdueAlert');
@@ -693,8 +709,8 @@
         }
 
         // Breakdown Summary
-        document.getElementById('modalInvSubtotal').textContent = this.formatCurrency(inv.subtotal);
-        document.getElementById('modalInvTax').textContent = this.formatCurrency(inv.tax_amount);
+        setText('modalInvSubtotal', this.formatCurrency(inv.subtotal));
+        setText('modalInvTax', this.formatCurrency(inv.tax_amount));
 
         const discountRow = document.getElementById('modalInvDiscountRow');
         const discountAmtEl = document.getElementById('modalInvDiscount');
@@ -705,9 +721,9 @@
           if (discountRow) discountRow.classList.add('d-none');
         }
 
-        document.getElementById('modalInvGrandTotal').textContent = this.formatCurrency(inv.total_amount);
-        document.getElementById('modalInvPaid').textContent = this.formatCurrency(inv.amount_paid);
-        document.getElementById('modalInvDue').textContent = this.formatCurrency(inv.amount_due);
+        setText('modalInvGrandTotal', this.formatCurrency(inv.total_amount));
+        setText('modalInvPaid', this.formatCurrency(inv.amount_paid));
+        setText('modalInvDue', this.formatCurrency(inv.amount_due));
 
         // Payments History
         const paymentsSection = document.getElementById('modalInvPaymentsSection');

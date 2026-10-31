@@ -1,0 +1,76 @@
+/* ==========================================================================
+   Brightloop Software - Products & Variant Management Stylesheet
+   SaaS Catalog Design System, Variant Tables & Inline Tag Badges
+   ========================================================================== */
+
+/* Product Variant Badges */
+.variant-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: var(--slate-100);
+  border: 1px solid var(--slate-200);
+  color: var(--navy-800);
+  border-radius: 9999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.725rem;
+  font-weight: 500;
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.variant-pill .badge-extra {
+  color: #2563eb;
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+/* Product Type Badges */
+.badge-type-software {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.badge-type-service {
+  background-color: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.badge-type-hardware {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.badge-type-consumable {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+/* Inline Variant Form Row */
+.variant-form-row {
+  background-color: var(--slate-50);
+  border: 1px dashed var(--slate-300);
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  margin-bottom: 0.5rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.variant-form-row:hover {
+  background-color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+/* Effective Price Highlight */
+.effective-price-box {
+  background-color: #eff6ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.35rem;
+}
+

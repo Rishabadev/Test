@@ -704,6 +704,7 @@ class DashboardOverviewSerializer(serializers.Serializer):
 
 class DashboardOverdueInvoiceSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source='customer.email', read_only=True)
+    customer_name = serializers.SerializerMethodField(read_only=True)
     subscription_number = serializers.CharField(source='subscription.subscription_number', read_only=True, allow_null=True)
     amount_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     amount_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -712,11 +713,15 @@ class DashboardOverdueInvoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = (
-            'id', 'invoice_number', 'customer', 'customer_email',
+            'id', 'invoice_number', 'customer', 'customer_email', 'customer_name',
             'subscription', 'subscription_number', 'status',
             'issue_date', 'due_date', 'total_amount',
             'amount_paid', 'amount_due', 'days_overdue'
         )
+
+    def get_customer_name(self, obj):
+        name = f"{obj.customer.first_name} {obj.customer.last_name}".strip()
+        return name or obj.customer.email
 
     def get_days_overdue(self, obj):
         today = timezone.localdate()
@@ -727,12 +732,18 @@ class DashboardOverdueInvoiceSerializer(serializers.ModelSerializer):
 
 class DashboardPaymentSerializer(serializers.ModelSerializer):
     invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True)
+    invoice_status = serializers.CharField(source='invoice.status', read_only=True)
     customer_id = serializers.IntegerField(source='invoice.customer_id', read_only=True)
     customer_email = serializers.EmailField(source='invoice.customer.email', read_only=True)
+    customer_name = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Payment
         fields = (
-            'id', 'invoice', 'invoice_number', 'customer_id', 'customer_email',
-            'amount', 'payment_date', 'method', 'transaction_reference', 'note'
+            'id', 'invoice', 'invoice_number', 'invoice_status', 'customer_id', 'customer_email',
+            'customer_name', 'amount', 'payment_date', 'method', 'transaction_reference', 'note'
         )
+
+    def get_customer_name(self, obj):
+        name = f"{obj.invoice.customer.first_name} {obj.invoice.customer.last_name}".strip()
+        return name or obj.invoice.customer.email
